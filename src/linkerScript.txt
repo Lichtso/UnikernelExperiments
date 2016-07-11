@@ -1,9 +1,11 @@
-SECTIONS
-{
-  . = 0x10000;
-  .text : { *(.text) }
-  . = 0x20000;
-  .data : { *(.data) }
-  .rodata : { *(.rodata) }
-  .bss : { *(.bss) }
+SECTIONS {
+    . = 0x00000;
+    .text : { *(.text) }
+
+    . = 0x10000;
+    .data : { *(.data) }
+    .rodata : { *(.rodata) }
+    .bss : { *(.bss) }
 }
+
+ENTRY(resetVector)
