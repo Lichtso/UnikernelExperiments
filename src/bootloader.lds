@@ -1,5 +1,5 @@
 SECTIONS {
-    . = 0x00010030;
+    . = 0x00010338;
     .text : { *(.text) }
     .rodata : { *(.rodata) }
     .data : { *(.data) }
@@ -8,4 +8,4 @@ SECTIONS {
     /DISCARD/ : { *(.comment) }
 }
 
-ENTRY(_Z4mainv)
+ENTRY(entry)
