@@ -148,8 +148,9 @@ int main(int argc, char** argv) {
         write(output, reader.sections[i]->get_data(), psec->get_size());
     }
 
-    header.length = (header.length+blockSize-1)/blockSize*blockSize;
-    std::cout << "Length: " << std::dec << header.length << std::endl;
+    header.length = (header.length+blockSize-1)/blockSize;
+    std::cout << "Length: " << std::dec << header.length << " (" << blockSize << " byte blocks)" << std::endl;
+    header.length *= blockSize;
 
     lseek(output, SPL_SD_Offset, SEEK_SET);
     write(output, (char*)&header, headerLength);
