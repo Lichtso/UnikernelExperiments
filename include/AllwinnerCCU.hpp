@@ -71,15 +71,16 @@ struct AllwinnerCCU {
         pad17[2],
         HDMIClock,
         HDMISlowClock,
+        pad18,
         MBUSClock,
-        pad18[3],
+        pad19[2],
         MIPIDSIClock,
-        pad19[13],
+        pad20[13],
         GPUClock,
-        pad20[23],
+        pad21[23],
         PLLStableTime0,
         PLLStableTime1,
-        pad21[6],
+        pad22[6],
         PLLCPUXBias,
         PLLAUDIOBias,
         PLLVIDEO0Bias,
@@ -93,18 +94,18 @@ struct AllwinnerCCU {
         PLLDEBias,
         PLLDDR1Bias,
         PLLCPUXTuning,
-        pad22[3],
-        PLLDDR0Tuning,
         pad23[3],
+        PLLDDR0Tuning,
+        pad24[3],
         PLLMIPITuning,
-        pad24[2],
+        pad25[2],
         PLLPERIPH1PatternControl,
         PLLCPUXPatternControl,
         PLLAUDIOPatternControl,
         PLLVIDEO0PatternControl,
         PLLVEPatternControl,
         PLLDDR0PatternControl,
-        pad25,
+        pad26,
         PLLVIDEO1PatternControl,
         PLLGPUPatternControl,
         PLLMIPIPatternControl,
@@ -112,19 +113,81 @@ struct AllwinnerCCU {
         PLLDEPatternControl,
         PLLDDR1PatternControl0,
         PLLDDR1PatternControl1,
-        pad26[3],
+        pad27[3],
         BusSoftwareReset0,
         BusSoftwareReset1,
         BusSoftwareReset2,
-        pad27,
-        BusSoftwareReset3,
         pad28,
+        BusSoftwareReset3,
+        pad29,
         BusSoftwareReset4,
-        pad29[5],
+        pad30[5],
         CCMSecuritySwitch,
-        pad30[3],
+        pad31[3],
         PSControl,
         PSCounter,
-        pad31[6],
+        pad32[6],
         PLLLockControl;
+
+    void configureUART0() volatile {
+        BusClockGating[3] |= (1<<16); // UART0
+        BusSoftwareReset4 |= (1<<16); // UART0
+    }
+
+    void configurePLL() volatile {
+        PLLLockControl |= (1<<28); // 0x01C20320 : MODE_SEL New Mode
+
+        // CPUXAXI init
+        CPUXAXIConfiguration |= 2; // 0x01C20050
+        PLLLockControl |= (1<<0); // 0x01C20320
+        PLLCPUXControl |= (1<<31); // 0x01C20000
+        while((PLLCPUXControl&(1<<28)) == 0); // 0x01C20000
+        PLLLockControl &= ~(1<<0); // 0x01C20320
+        CPUXAXIConfiguration &= ~(3<<16); // 0x01C20050
+        CPUXAXIConfiguration |= (2<<16); // 0x01C20050
+
+        // HSIC init
+        PLLLockControl |= (1<<9); // 0x01C20320
+        PLLHSICControl |= (1<<31); // 0x01C20044
+        while((PLLHSICControl&(1<<28)) == 0); // 0x01C20044
+        PLLLockControl &= ~(1<<9); // 0x01C20320
+
+        // AHB1APB1 init
+        AHB1APB1Configuration = (AHB1APB1Configuration&(3<<12))|(1<<12); // 0x01C20054
+        PLLLockControl |= (1<<5); // 0x01C20320
+        PLLPERIPH0Control |= (1<<31); // 0x01C20028
+        while((PLLPERIPH0Control&(1<<28)) == 0); // 0x01C20028
+        PLLLockControl &= ~(1<<5); // 0x01C20320
+        AHB1APB1Configuration = 0x180; // 0x01C20054
+        AHB1APB1Configuration |= (3<<12); // 0x01C20054
+
+        // PLLDDR0 init
+        // PLLDDR0Control &= ~(0x7F<<8); // 0x01C20020
+        // PLLDDR0Control = (1<<31)|(27<<8); // 0x01C20020 : PLL_ENABLE, PLL_FACTOR_N: 28 (672 MHz)
+        // PLLDDR0Control |= (1<<20); // 0x01C20020 : PLL_DDR0_CFG_UPDATE
+        // PLLLockControl |= (1<<4); // 0x01C20320 : Lock Enable PLL_DDR0
+        // puts("Wait for PLL0");
+        // while(((PLLDDR0Control>>20)&0x11) != 0x10); // 0x01C20020 : LOCK, PLL_DDR0_CFG_UPDATE
+        // PLLLockControl &= ~(1<<4); // 0x01C20320
+
+        // PLLDDR1 init
+        PLLDDR1Control &= ~(0x7F<<8); // 0x01C2004C
+        PLLDDR1Control |= (1<<31)|(55<<8); // 0x01C2004C : PLL_ENABLE, PLL_FACTOR_N: 55 (1320 MHz)
+        PLLDDR1Control |= (1<<30); // 0x01C2004C : SDRPLL_UPD
+        PLLLockControl |= (1<<11); // 0x01C20320 : PLL_DDR1
+        while(((PLLDDR1Control>>28)&0x5) != 0x1); // 0x01C2004C : SDRPLL_UPD, LOCK
+        PLLLockControl &= ~(1<<11); // 0x01C20320
+
+        PLLLockControl &= ~(1<<28); // 0x01C20320 : MODE_SEL Old Mode
+    }
+
+    void configureDRAM() volatile {
+        DRAMConfiguration |= (1<<20); // 0x01C200F4 : PLL_DDR1
+        DRAMConfiguration |= (1<<16); // 0x01C200F4 : SDRCLK_UPD
+        while(DRAMConfiguration&(1<<16));
+        BusSoftwareReset0 |= (1<<14); // 0x01C202C0 : SDRAM_RST
+        BusClockGating[0] |= (1<<14); // 0x01C20060 : DRAM_GATING
+        MBUSClock = 0x81000002; // 0x01C2015C
+        DRAMConfiguration |= (1<<31); // 0x01C200F4 : DRAM_CTR_RST
+    }
 };

@@ -137,7 +137,7 @@ struct AllwinnerUART {
         // FIFOControl.transmitReset = 1;
         halt.haltTransmit = 0;
 
-        ::puts("UART0 initialized");
+        ::puts("[ OK ] UART0");
     }
     Natural8 getc() volatile {
         while(!lineStatus.dataReady);
@@ -147,9 +147,12 @@ struct AllwinnerUART {
         while(!lineStatus.transmitHoldingRegisterEmpty);
         transmitHolding = value;
     }
-    void putHex(Natural8 value) volatile {
-        value &= 0xF;
-        putc((value < 0xA) ? value+'0' : value-0xA+'A');
+    template<typename Type>
+    void putHex(Type value) volatile {
+        for(Natural8 i = sizeof(value)*8; i > 0; i -= 4) {
+            Natural8 nibble = (value>>(i-4))&0xF;
+            putc((nibble < 0xA) ? nibble+'0' : nibble-0xA+'A');
+        }
     }
     void puts(const char* str) volatile {
         while(*str)

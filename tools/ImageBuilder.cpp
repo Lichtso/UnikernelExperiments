@@ -105,68 +105,86 @@ struct BootFileHead header = {
 };
 
 int main(int argc, char** argv) {
-    if(argc != 3) {
-        std::cout << "Usage: InputFile OutputFile" << std::endl;
+    if(argc != 2 && argc != 3) {
+        std::cout << "Usage: [*.elf] *.bin" << std::endl;
         return 1;
     }
+    bool checksumOnly = (argc == 2);
 
-    if(!reader.load(argv[1])) {
-        std::cout << "Failed to open file " << argv[1] << std::endl;
-        return 2;
+    if(!checksumOnly) {
+        if(!reader.load(argv[1])) {
+            std::cout << "Failed to open *.elf" << std::endl;
+            return 2;
+        }
+
+        if(reader.get_class() != ELFCLASS32 || reader.get_encoding() != ELFDATA2LSB) {
+            std::cout << "32 bit little endian is required" << std::endl;
+            return 3;
+        }
     }
 
-    if(reader.get_class() != ELFCLASS32 || reader.get_encoding() != ELFDATA2LSB) {
-        std::cout << "32 bit little endian is required" << std::endl;
-        return 3;
-    }
-
-    output = open(argv[2], O_RDWR|O_CREAT|O_TRUNC, 0666);
+    if(checksumOnly)
+        output = open(argv[1], O_RDWR, 0666);
+    else
+        output = open(argv[2], O_RDWR|O_CREAT|O_TRUNC, 0666);
     if(output < 0) {
-        std::cout << "Failed to open file " << argv[2] << std::endl;
+        std::cout << "Failed to open *.bin" << std::endl;
         return 4;
     }
 
-    for(unsigned int i = 0; i < reader.sections.size(); ++i) {
-        ELFIO::section* psec = reader.sections[i];
-        address = psec->get_address()-SPL_sRAM_Offset-headerLength;
-        if(psec->get_type() != SHT_PROGBITS || address < 0)
-            continue;
+    if(!checksumOnly)
+        for(unsigned int i = 0; i < reader.sections.size(); ++i) {
+            ELFIO::section* psec = reader.sections[i];
+            address = psec->get_address()-SPL_sRAM_Offset-headerLength;
+            if(psec->get_type() != SHT_PROGBITS || address < 0)
+                continue;
 
-        address += headerLength;
-        if(header.length < address+psec->get_size())
-            header.length = address+psec->get_size();
-        address += SPL_SD_Offset;
+            address += headerLength;
+            if(header.length < address+psec->get_size())
+                header.length = address+psec->get_size();
+            address += SPL_SD_Offset;
 
-        std::cout << "\t[" << i << "] "
-                  << psec->get_name()
-                  << std::hex
-                  << "\t0x" << psec->get_size()
-                  << "\t0x" << address
-                  << std::endl;
+            std::cout << "\t[" << i << "] "
+                      << psec->get_name()
+                      << std::hex
+                      << "\t0x" << psec->get_size()
+                      << "\t0x" << address
+                      << std::endl;
 
-        lseek(output, address, SEEK_SET);
-        write(output, reader.sections[i]->get_data(), psec->get_size());
+            lseek(output, address, SEEK_SET);
+            write(output, reader.sections[i]->get_data(), psec->get_size());
+        }
+    else {
+        lseek(output, SPL_SD_Offset+0x10, SEEK_SET);
+        read(output, (char*)&header.length, 4);
     }
 
     header.length = (header.length+blockSize-1)/blockSize;
     std::cout << "Length: " << std::dec << header.length << " (" << blockSize << " byte blocks)" << std::endl;
     header.length *= blockSize;
 
-    lseek(output, SPL_SD_Offset, SEEK_SET);
-    write(output, (char*)&header, headerLength);
-    ftruncate(output, SPL_SD_Offset+header.length);
+    if(!checksumOnly) {
+        lseek(output, SPL_SD_Offset, SEEK_SET);
+        write(output, (char*)&header, headerLength);
+        ftruncate(output, SPL_SD_Offset+header.length);
+    }
 
     lseek(output, SPL_SD_Offset, SEEK_SET);
     header.checkSum = 0;
     for(unsigned int i = 0; i < header.length/4; ++i) {
         read(output, (char*)&buffer, 4);
+        if(checksumOnly && i == 3)
+            buffer = 0x5F0A6C39;
         header.checkSum += buffer;
     }
 
-    lseek(output, SPL_SD_Offset+12, SEEK_SET);
-    write(output, (char*)&header.checkSum, 4);
+    if(!checksumOnly) {
+        lseek(output, SPL_SD_Offset+12, SEEK_SET);
+        write(output, (char*)&header.checkSum, 4);
+    }
+
     close(output);
-    std::cout << "Check sum: " << std::hex << header.checkSum << std::endl;
+    std::cout << "Check sum: " << std::hex << __builtin_bswap32(header.checkSum) << std::endl;
 
     return 0;
 }

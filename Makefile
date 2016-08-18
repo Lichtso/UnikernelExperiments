@@ -10,8 +10,8 @@ build/%.o : src/%.s
 build/%.o : src/%.cpp $(HPP_SRC)
 	$(COMPILE) -fno-exceptions -fno-unwind-tables -fno-stack-protector -fno-rtti -ffreestanding -std=c++1z -o $@ $<
 
-build/bootloader.bin: build/bootloader.elf ImageBuilder/ImageBuilder
-	ImageBuilder/ImageBuilder $< $@
+build/bootloader.bin: build/bootloader.elf tools/ImageBuilder
+	tools/ImageBuilder $< $@
 
 build/bootloader.elf : src/bootloader.lds $(BIN)
 	$(LLVM_BIN)lld -flavor gnu -s --script $< -o $@ $(BIN)
@@ -19,5 +19,5 @@ build/bootloader.elf : src/bootloader.lds $(BIN)
 analyze: build/bootloader.elf
 	$(LLVM_BIN)llvm-objdump -d -s -t -print-imm-hex $<
 
-ImageBuilder/ImageBuilder: ImageBuilder/main.cpp
-	clang++ -IImageBuilder/elfio -o $@ $<
+tools/ImageBuilder: tools/ImageBuilder.cpp
+	clang++ -Itools/elfio -o $@ $<

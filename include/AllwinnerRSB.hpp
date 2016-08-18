@@ -91,9 +91,7 @@ struct AllwinnerRSB {
         Natural32 raw;
     } deviceAddress;
 
-    void initialize() volatile {
-        puts("Initializing RSB");
-
+    bool initialize() volatile {
         auto PRCM = AllwinnerPRCM::instances[0].address;
         PRCM->APBSSoftwareReset |= 8; // 0x01F014B0 : R_RSB_RESET
         PRCM->APBSClockGating |= 9; // 0x01F01428 : R_PIO_GATING, R_RSB_GATING
@@ -113,28 +111,24 @@ struct AllwinnerRSB {
 
         pmuModeControl.raw = 0x807C3E00;
         while(pmuModeControl.start);
-
-        if(status.transferError)
-            puts("RSB DMC init error");
-        if(status.transferComplete)
-            puts("RSB DMC init complete");
+        if(status.transferError || !status.transferComplete) {
+            puts("[FAIL] RSB DMC");
+            return false;
+        } else {
+            puts("[ OK ] RSB DMC");
+            return true;
+        }
     }
     bool transfer(Natural8 cmd) volatile {
         command.byte = cmd;
         control.startTransmission = 1;
-        while(1) {
-            if(status.loadingBusy) {
-                puts("RSB transfer loading busy");
-                return false;
-            }
-            if(status.transferError) {
-                puts("RSB transfer error");
-                return false;
-            }
-            if(status.transferComplete) {
-                puts("RSB transfer complete");
-                return true;
-            }
+        while(control.startTransmission);
+        if(status.transferError || !status.transferComplete) {
+            puts("[FAIL] RSB transfer");
+            return false;
+        } else {
+            puts("[ OK ] RSB transfer");
+            return true;
         }
     }
     bool setRunTimeAddress() volatile {
@@ -145,41 +139,29 @@ struct AllwinnerRSB {
         return transfer(cmd);
     }
     bool read(Natural8 address, Natural8& data) volatile {
-        // dataLength.bytesMinusOne = 0;
-        // dataLength.read = 1;
         bool success = transfer(0x8B, address);
         data = dataBuffer;
         return success;
     }
     bool read(Natural8 address, Natural16& data) volatile {
-        // dataLength.bytesMinusOne = 1;
-        // dataLength.read = 1;
         bool success = transfer(0x9C, address);
         data = dataBuffer;
         return success;
     }
     bool read(Natural8 address, Natural32& data) volatile {
-        // dataLength.bytesMinusOne = 3;
-        // dataLength.read = 1;
         bool success = transfer(0xA6, address);
         data = dataBuffer;
         return success;
     }
     bool write(Natural8 address, Natural8 data) volatile {
-        // dataLength.bytesMinusOne = 0;
-        // dataLength.read = 0;
         dataBuffer = data;
         return transfer(0x4E, address);
     }
     bool write(Natural8 address, Natural16 data) volatile {
-        // dataLength.bytesMinusOne = 1;
-        // dataLength.read = 0;
         dataBuffer = data;
         return transfer(0x59, address);
     }
     bool write(Natural8 address, Natural32 data) volatile {
-        // dataLength.bytesMinusOne = 3;
-        // dataLength.read = 0;
         dataBuffer = data;
         return transfer(0x63, address);
     }
