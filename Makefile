@@ -1,4 +1,4 @@
-HPP_SRC := $(wildcard src/*.hpp)
+HPP_SRC := $(wildcard include/*.hpp)
 CPP_SRC := $(wildcard src/*.cpp)
 ASM_SRC := $(wildcard src/*.s)
 BIN := $(ASM_SRC:src/%.s=build/%.o) $(CPP_SRC:src/%.cpp=build/%.o)

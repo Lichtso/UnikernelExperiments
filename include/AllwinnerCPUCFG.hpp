@@ -1,4 +1,4 @@
-#include <AllwinnerDRAMCTL.hpp>
+#include <AllwinnerPIO.hpp>
 
 struct AllwinnerCPUCFG {
     static const struct Instance {

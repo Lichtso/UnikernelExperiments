@@ -1,8 +1,8 @@
-#include <GICPL400.hpp>
+#include <AllwinnerDRAMCTL.hpp>
 
 struct DRAM {
     static const struct Instance {
-        volatile DRAM* address;
+        DRAM* address;
     } instances[];
 
     static void initialize() {

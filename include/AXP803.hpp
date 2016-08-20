@@ -15,14 +15,26 @@ struct AXP803 {
         Natural8 type;
         if(!RSB->read(0x3, type))
             return;
-        if(type != 0x51) {
+        if(type != 0x51)
             puts("[FAIL] AXP803");
-            return;
-        }
+        else
+            puts("[ OK ] AXP803");
+    }
+
+    static void configureDCDC5() {
+        auto RSB = AllwinnerRSB::instances[0].address;
 
         // Natural16 voltage = (level < 32) ? 800+level*10 : 1120+(level-32)*20;
-        const Natural8 level = 51; // 1500 mV
-        if(RSB->write(0x24, level)) // DRAM_VCC (DCDC5)
-            puts("[ OK ] AXP803");
+        Natural8 value = 51; // 1500 mV
+        if(!RSB->write(0x24, value)) // DRAM_VCC (DCDC5)
+            return;
+    }
+
+    static void configureDC1SW() {
+        auto RSB = AllwinnerRSB::instances[0].address;
+
+        Natural8 value = (1<<7); // DC1SW (Ethernet PHY)
+        if(!RSB->write(0x12, value)) // Output power on-off control 2
+            return;
     }
 };

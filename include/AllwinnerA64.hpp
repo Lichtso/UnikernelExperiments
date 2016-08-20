@@ -1,7 +1,11 @@
-#include <DRAM.hpp>
+#include <AllwinnerEMAC.hpp>
 
 const struct AllwinnerCPUCFG::Instance AllwinnerCPUCFG::instances[] = {
     { reinterpret_cast<AllwinnerCPUCFG*>(0x01F01C00) }
+};
+
+const struct AllwinnerSYSCTL::Instance AllwinnerSYSCTL::instances[] = {
+    { reinterpret_cast<AllwinnerSYSCTL*>(0x01C00000) }
 };
 
 const struct AllwinnerCCU::Instance AllwinnerCCU::instances[] = {
@@ -18,6 +22,14 @@ const struct AllwinnerUART::Instance AllwinnerUART::instances[] = {
     { reinterpret_cast<AllwinnerUART*>(0x01C28800), 34, 8 },
     { reinterpret_cast<AllwinnerUART*>(0x01C28C00), 35, 9 },
     { reinterpret_cast<AllwinnerUART*>(0x01C29000), 36, 10 }
+};
+
+const struct AllwinnerEMAC::Instance AllwinnerEMAC::instances[] = {
+    { reinterpret_cast<AllwinnerEMAC*>(0x01C30000), 114 }
+};
+
+const struct AllwinnerHSTimer::Instance AllwinnerHSTimer::instances[] = {
+    { reinterpret_cast<AllwinnerHSTimer*>(0x01C60000), 83 }
 };
 
 const struct AllwinnerDRAMCOM::Instance AllwinnerDRAMCOM::instances[] = {

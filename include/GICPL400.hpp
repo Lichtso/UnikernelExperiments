@@ -1,4 +1,4 @@
-#include <AXP803.hpp>
+#include <AllwinnerCCU.hpp>
 
 struct GICPL400 {
     static const struct Instance {

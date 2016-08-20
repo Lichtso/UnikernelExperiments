@@ -1,4 +1,4 @@
-#include <AllwinnerPIO.hpp>
+#include <AXP803.hpp>
 
 struct AllwinnerDRAMCOM {
     static const struct Instance {

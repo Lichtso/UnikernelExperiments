@@ -9,21 +9,22 @@ void puts(const char* str) {
 
 void main() {
     auto CCU = AllwinnerCCU::instances[0].address;
-    CCU->configureUART0();
-
-    auto PIO = AllwinnerPIO::instances[0].address;
-    PIO->banks[1].configure[1].slot0 = 4; // PB8 : UART0_TX
-    PIO->banks[1].configure[1].slot1 = 4; // PB9 : UART0_RX
-    PIO->banks[1].pull[0].slot9 = 1; // PB9 : PullUP
 
     auto UART = AllwinnerUART::instances[0].address;
+    CCU->configureUART0();
     UART->initialize();
 
     auto RSB = AllwinnerRSB::instances[0].address;
+    CCU->configureRSB();
     RSB->initialize();
     AXP803::initialize();
 
+    AXP803::configureDCDC5();
     CCU->configurePLL();
     CCU->configureDRAM();
     DRAM::initialize();
+
+    auto EMAC = AllwinnerEMAC::instances[0].address;
+    AXP803::configureDC1SW();
+    CCU->configureEMAC();
 }

@@ -92,18 +92,6 @@ struct AllwinnerRSB {
     } deviceAddress;
 
     bool initialize() volatile {
-        auto PRCM = AllwinnerPRCM::instances[0].address;
-        PRCM->APBSSoftwareReset |= 8; // 0x01F014B0 : R_RSB_RESET
-        PRCM->APBSClockGating |= 9; // 0x01F01428 : R_PIO_GATING, R_RSB_GATING
-
-        auto PIO = AllwinnerPIO::instances[1].address;
-        PIO->banks[0].configure[0].slot0 = 2; // PL0 : S_RSB_SCK
-        PIO->banks[0].configure[0].slot1 = 2; // PL1 : S_RSB_SDA
-        PIO->banks[0].multiDriving[0].slot0 = 2; // PL0 : MultiDrivingLevel 2
-        PIO->banks[0].multiDriving[0].slot1 = 2; // PL1 : MultiDrivingLevel 2
-        // PIO->banks[0].pull[0].slot0 = 1; // PL0 : PullUP (Default)
-        // PIO->banks[0].pull[0].slot1 = 1; // PL1 : PullUP (Default)
-
         clockControl.divisor = 3;
         clockControl.delay = 1;
         control.softReset = 1;
