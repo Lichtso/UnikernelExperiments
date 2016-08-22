@@ -149,6 +149,7 @@ struct AllwinnerUART {
     }
     template<typename Type>
     void putHex(Type value) volatile {
+        static_assert(sizeof(value)*8 < 256);
         for(Natural8 i = sizeof(value)*8; i > 0; i -= 4) {
             Natural8 nibble = (value>>(i-4))&0xF;
             putc((nibble < 0xA) ? nibble+'0' : nibble-0xA+'A');

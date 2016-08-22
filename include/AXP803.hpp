@@ -24,7 +24,6 @@ struct AXP803 {
     static void configureDCDC5() {
         auto RSB = AllwinnerRSB::instances[0].address;
 
-        // Natural16 voltage = (level < 32) ? 800+level*10 : 1120+(level-32)*20;
         Natural8 value = 51; // 1500 mV
         if(!RSB->write(0x24, value)) // DRAM_VCC (DCDC5)
             return;

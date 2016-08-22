@@ -1,4 +1,4 @@
-#include <AllwinnerA64.hpp>
+#include <Net.hpp>
 
 void puts(const char* str) {
     auto UART = AllwinnerUART::instances[0].address;
@@ -24,7 +24,11 @@ void main() {
     CCU->configureDRAM();
     DRAM::initialize();
 
-    auto EMAC = AllwinnerEMAC::instances[0].address;
+    auto MAC = reinterpret_cast<struct MAC*>(DRAM::instances[0].address);
     AXP803::configureDC1SW();
     CCU->configureEMAC();
+    MAC->initialize();
+
+    while(1)
+        MAC->poll();
 }

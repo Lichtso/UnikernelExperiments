@@ -2,7 +2,7 @@ HPP_SRC := $(wildcard include/*.hpp)
 CPP_SRC := $(wildcard src/*.cpp)
 ASM_SRC := $(wildcard src/*.s)
 BIN := $(ASM_SRC:src/%.s=build/%.o) $(CPP_SRC:src/%.cpp=build/%.o)
-COMPILE = $(LLVM_BIN)clang-3.9 -O1 -Iinclude -c -target armv7a-none-eabi -Wall -Wsign-compare
+COMPILE = $(LLVM_BIN)clang-3.9 -O1 -Iinclude -c -target armv7a-none-eabi -mlittle-endian -Wall -Wsign-compare
 
 build/%.o : src/%.s
 	$(COMPILE) -o $@ $<

@@ -6,10 +6,6 @@ struct AllwinnerEMAC {
         Natural8 interruptPort;
     } instances[];
 
-    static const Natural16
-        transmitBuffers = 128, receiveBuffers = 128,
-        transmitBufferStride = 2048, receiveBufferStride = 2048;
-
     enum DMAStatus {
         TransmitStopped = 0,
         TransmitFetchingDescriptor = 1,
@@ -26,13 +22,8 @@ struct AllwinnerEMAC {
         ReceivePassingFrame = 7
     };
 
-    struct MACFrame {
-        Natural8 destinationAddress[6], sourceAddress[6];
-        Natural16 type;
-        Natural8 data[0];
-    };
-
     struct TransmitDescriptor {
+        static const Natural32 errorMask = 0x00015706; // 0000 0000 0000 0001 0101 0111 0000 0110
         union {
             struct {
                 Natural32 deferHalfDuplex : 1,
@@ -57,7 +48,9 @@ struct AllwinnerEMAC {
         union {
             struct {
                 Natural32 bufferSize : 11,
-                          pad0 : 15,
+                          pad0 : 13,
+                          chainMode : 1,
+                          pad1 : 1,
                           CRCDisable : 1,
                           checksumEnable : 2,
                           first : 1,
@@ -70,6 +63,7 @@ struct AllwinnerEMAC {
     };
 
     struct ReceiveDescriptor {
+        static const Natural32 errorMask = 0x000048DB; // 0000 0000 0000 0000 0100 1000 1101 1011
         union {
             struct {
                 Natural32 payloadChecksumError : 1,
@@ -97,7 +91,9 @@ struct AllwinnerEMAC {
         union {
             struct {
                 Natural32 bufferSize : 11,
-                          pad0 : 20,
+                          pad0 : 13,
+                          chainMode : 1,
+                          pad1 : 6,
                           completionInterruptDisable : 1;
             };
             Natural32 raw;
@@ -170,7 +166,7 @@ struct AllwinnerEMAC {
     } transmitControl0;
     union {
         struct {
-            Natural32 flushAutomaticDisable : 1,
+            Natural32 flushFIFODisable : 1,
                       DMAFIFOThresholdDisable : 1,
                       pad0 : 6,
                       DMAFIFOThresholdValue : 3,
@@ -200,7 +196,7 @@ struct AllwinnerEMAC {
                       flowControlEnable : 1,
                       unicastPauseFrameEnable : 1,
                       pad1 : 9,
-                      IPv4CRCEnable : 1,
+                      checksumEnable : 1,
                       stripFCSOnShortFrames : 1,
                       jumboFrameEnable : 1,
                       truncateFramesDisable : 1,
@@ -210,7 +206,7 @@ struct AllwinnerEMAC {
     } receiveControl0;
     union {
         struct {
-            Natural32 flushAutomaticDisable : 1,
+            Natural32 flushFrameDisable : 1,
                       DMAFIFOThresholdDisable : 1,
                       forwardShortFrames : 1,
                       forwardErroredFrames : 1,
@@ -244,7 +240,7 @@ struct AllwinnerEMAC {
                       allMulticastPass : 1,
                       noBroadcastPass : 1,
                       pad4 : 13,
-                      filterAddressDisable : 1;
+                      addressFilterDisable : 1;
         };
         Natural32 raw;
     } receiveFrameFilter;
@@ -312,59 +308,37 @@ struct AllwinnerEMAC {
         basicControl1.burstLength = 8;
         MIICommandRegister.MDCClockDivisor = 1;
 
-        auto UART = AllwinnerUART::instances[0].address;
         if(MIIRead(0, 2) != 0x001C || MIIRead(0, 3) != 0xC915) {
             puts("[FAIL] RTL8211E-VB");
             return;
         } else
             puts("[ OK ] RTL8211E-VB");
 
-        while(MIIRead(0, 1) != 0x796D);
-        puts("[ OK ] Ethernet autonegotiation");
+        while(!link());
 
-        Natural16 linkStatus = MIIRead(0, 17);
-        if((linkStatus&(1<<10)) == 0) {
-            puts("[FAIL] Ethernet link");
-            return;
-        }
+        auto UART = AllwinnerUART::instances[0].address;
         UART->puts("[ OK ] ");
         const char* speedStrings[] = { "10 Mbps", "100 Mbps", "1 Gbps", "Unknown speed" };
-        UART->puts(speedStrings[linkStatus>>14]);
+        UART->puts(speedStrings[MIIRead(0, 17)>>14]);
         puts(" Ethernet link");
 
-        for(Natural8 i = 0; i < transmitBuffers; ++i) {
-            auto descriptor = getTransmitDescriptor(i);
-            descriptor->bufferAddress = reinterpret_cast<Natural32>(descriptor)+16;
-            descriptor->next = reinterpret_cast<Natural32>(getTransmitDescriptor((i+1)%transmitBuffers));
-            descriptor->control.raw = 0;
-            descriptor->status.raw = 0;
-        }
-        for(Natural8 i = 0; i < receiveBuffers; ++i) {
-            auto descriptor = getReceiveDescriptor(i);
-            descriptor->bufferAddress = reinterpret_cast<Natural32>(descriptor)+16;
-            descriptor->next = reinterpret_cast<Natural32>(getReceiveDescriptor((i+1)%receiveBuffers));
-            descriptor->control.raw = 0;
-            descriptor->control.bufferSize = receiveBufferStride-sizeof(ReceiveDescriptor);
-            descriptor->status.raw = 0;
-            descriptor->status.DMAOwnership = 1;
-        }
-        transmitDMA = reinterpret_cast<Natural32>(getTransmitDescriptor(0));
-        receiveDMA = reinterpret_cast<Natural32>(getReceiveDescriptor(0));
-
-        transmitControl1.flushAutomaticDisable = 0;
-        transmitControl1.DMAFIFOThresholdDisable = 1;
-        transmitControl1.pad0 = 1;
-        transmitControl1.DMAFIFOThresholdValue = 0;
-        transmitControl1.DMAEnable = 1;
-        transmitControl1.DMAStart = 1;
         transmitControl0.frameLengthControl = 1;
-        transmitControl0.enableTransmitter = 1;
+        transmitControl1.flushFIFODisable = 1;
+        transmitControl1.DMAFIFOThresholdDisable = 1;
+        transmitControl1.DMAFIFOThresholdValue = 0;
+        transmitFlowControl.enable = 0;
+        transmitFlowControl.zeroQuantaPauseEnable = 0;
+        transmitFlowControl.pauseTime = 0;
+        transmitFlowControl.pauseFrameSlot = 0;
+        transmitFlowControl.pauseFrameActive = 0;
 
-        receiveFrameFilter.allPass = 1;
-        receiveFrameFilter.filterControlFrames = 2;
-        receiveFrameFilter.allMulticastPass = 1;
-        receiveFrameFilter.filterAddressDisable = 1;
-        receiveControl1.flushAutomaticDisable = 0;
+        receiveControl0.flowControlEnable = 0;
+        receiveControl0.unicastPauseFrameEnable = 0;
+        receiveControl0.checksumEnable = 1;
+        receiveControl0.stripFCSOnShortFrames = 0;
+        receiveControl0.jumboFrameEnable = 1;
+        receiveControl0.truncateFramesDisable = 0;
+        receiveControl1.flushFrameDisable = 0;
         receiveControl1.DMAFIFOThresholdDisable = 1;
         receiveControl1.forwardShortFrames = 0;
         receiveControl1.forwardErroredFrames = 0;
@@ -372,15 +346,18 @@ struct AllwinnerEMAC {
         receiveControl1.flowControlEnableThreshold = 0;
         receiveControl1.flowControlDisableThreshold = 0;
         receiveControl1.flowControlThresholdEnable = 0;
-        receiveControl1.DMAEnable = 1;
-        receiveControl1.DMAStart = 1;
-        receiveControl0.flowControlEnable = 1;
-        receiveControl0.unicastPauseFrameEnable = 0;
-        receiveControl0.IPv4CRCEnable = 0;
-        receiveControl0.stripFCSOnShortFrames = 0;
-        receiveControl0.jumboFrameEnable = 0;
-        receiveControl0.truncateFramesDisable = 0;
-        receiveControl0.enableReceiver = 1;
+
+        receiveFrameFilter.allPass = 0;
+        receiveFrameFilter.hashAndAddressFilter = 0;
+        receiveFrameFilter.invertDA = 0;
+        receiveFrameFilter.invertSA = 0;
+        receiveFrameFilter.filterSAEnable = 0;
+        receiveFrameFilter.hashUnicastEnable = 0;
+        receiveFrameFilter.hashMulticastEnable = 0;
+        receiveFrameFilter.filterControlFrames = 0;
+        receiveFrameFilter.allMulticastPass = 1;
+        receiveFrameFilter.noBroadcastPass = 0;
+        receiveFrameFilter.addressFilterDisable = 0;
     }
 
     Natural16 MIIRead(Natural8 deviceAddress, Natural8 registerAddress) volatile {
@@ -401,13 +378,19 @@ struct AllwinnerEMAC {
         while(MIICommandRegister.busy);
     }
 
-    TransmitDescriptor* getTransmitDescriptor(Natural16 index) volatile {
-        Natural32 transmitBufferOffset = reinterpret_cast<Natural32>(DRAM::instances[0].address);
-        return reinterpret_cast<TransmitDescriptor*>(transmitBufferOffset+transmitBufferStride*index);
+    void enableTransmitter(bool enabled) volatile {
+        transmitControl0.enableTransmitter = enabled;
+        transmitControl1.DMAEnable = enabled;
+        transmitControl1.DMAStart = enabled;
     }
 
-    ReceiveDescriptor* getReceiveDescriptor(Natural16 index) volatile {
-        Natural32 receiveBufferOffset = reinterpret_cast<Natural32>(DRAM::instances[0].address)+transmitBufferStride*transmitBuffers;
-        return reinterpret_cast<ReceiveDescriptor*>(receiveBufferOffset+receiveBufferStride*index);
+    void enableReceiver(bool enabled) volatile {
+        receiveControl0.enableReceiver = enabled;
+        receiveControl1.DMAEnable = enabled;
+        receiveControl1.DMAStart = enabled;
+    }
+
+    bool link() volatile {
+        return MIIRead(0, 17)&(1<<10);
     }
 };
