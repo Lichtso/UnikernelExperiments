@@ -1,4 +1,4 @@
-#include <AllwinnerTimer.hpp>
+#include "AllwinnerTimer.hpp"
 
 struct AllwinnerHSTimer {
     static const struct Instance {

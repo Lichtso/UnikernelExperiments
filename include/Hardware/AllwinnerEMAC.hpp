@@ -1,4 +1,4 @@
-#include <DRAM.hpp>
+#include "DRAM.hpp"
 
 struct AllwinnerEMAC {
     static const struct Instance {
@@ -51,8 +51,8 @@ struct AllwinnerEMAC {
                           pad0 : 13,
                           chainMode : 1,
                           pad1 : 1,
-                          CRCDisable : 1,
-                          checksumEnable : 2,
+                          CRCControl : 1,
+                          checksumControl : 2,
                           first : 1,
                           last : 1,
                           completionInterruptEnable : 1;
@@ -168,7 +168,8 @@ struct AllwinnerEMAC {
         struct {
             Natural32 flushFIFODisable : 1,
                       DMAFIFOThresholdDisable : 1,
-                      pad0 : 6,
+                      nextFrame : 1, // TODO: Undocumented
+                      pad0 : 5,
                       DMAFIFOThresholdValue : 3,
                       pad1 : 19,
                       DMAEnable : 1,
@@ -314,6 +315,9 @@ struct AllwinnerEMAC {
         } else
             puts("[ OK ] RTL8211E-VB");
 
+        Natural8 address[] = { 0x36, 0xC9, 0xE3, 0xF1, 0xB8, 0x05 }; // 36:C9:E3:F1:B8:05
+        setMACAddress(0, address);
+
         while(!link());
 
         auto UART = AllwinnerUART::instances[0].address;
@@ -392,5 +396,21 @@ struct AllwinnerEMAC {
 
     bool link() volatile {
         return MIIRead(0, 17)&(1<<10);
+    }
+
+    void setMACAddress(Natural8 index, void* buffer) volatile {
+        auto dst = reinterpret_cast<volatile Natural32*>(&MAC0High)+index*2;
+        auto src = reinterpret_cast<Natural16*>(buffer);
+        dst[0] &= ~(0xFFFF);
+        dst[0] |= src[0];
+        dst[1] = (src[2]<<16)|src[1];
+    }
+
+    void getMACAddress(Natural8 index, void* buffer) volatile {
+        auto src = reinterpret_cast<volatile Natural32*>(&MAC0High)+index*2;
+        auto dst = reinterpret_cast<Natural16*>(buffer);
+        dst[0] = src[0]&0xFFFF;
+        dst[1] = src[1]&0xFFFF;
+        dst[2] = src[1]>>16;
     }
 };

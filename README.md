@@ -1,15 +1,33 @@
 # UnikernelExperiments
-Basics for a unikernel running on ARMv8 / ARM64 / AArch64
+Bootloader / unikernel for the Pine64+
+
 
 ## Status
+
+- QEMU Versatile Board Experiments ✓
+- Hello-World for Allwinner-A64 ✓
+
 - Bootloader for Pine64+ [WIP]
-    - UART √
-    - RSB √
-    - AXP803 √
-    - DRAM √
-    - Ethernet √
-    - 64 Bit
-    - Interrupts
+
+- Software Driver
+    - 64 Bit: ARMv8 / ARM64 / AArch64
+    - Interrupt Handling
+    - IPv4
+    - IPv6 [WIP]
+    - TCP
+    - UDP
+
+- Hardware Driver
+    - UART ✓
+    - RSB ✓
+    - AXP803 ✓
+    - DRAM ✓
+    - Ethernet ✓
+    - Interrupt Controller
     - SD-Card
-- Hello-World for Allwinner-A64 √
-- QEMU Versatile Board Experiments √
+
+
+## Use Cases
+- Educational
+- Experimental Development
+- Zero overhead: High speed / low latency

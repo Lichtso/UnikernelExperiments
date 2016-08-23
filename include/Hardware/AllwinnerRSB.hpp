@@ -1,4 +1,4 @@
-#include <AllwinnerUART.hpp>
+#include "AllwinnerUART.hpp"
 
 struct AllwinnerRSB {
     static const struct Instance {

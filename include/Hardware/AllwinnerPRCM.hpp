@@ -1,4 +1,4 @@
-#include <AllwinnerSYSCTL.hpp>
+#include "AllwinnerSYSCTL.hpp"
 
 struct AllwinnerPRCM {
     static const struct Instance {

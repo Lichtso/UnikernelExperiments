@@ -34,6 +34,11 @@ void swapEndian(DataType& value) {
     value = swapedEndian(value);
 }
 
+void memcpy(void* dst, void* src, Natural32 length) {
+    for(Natural32 i = 0; i < length; ++i)
+        reinterpret_cast<Natural8*>(dst)[i] = reinterpret_cast<Natural8*>(src)[i];
+}
+
 template<typename T>
 constexpr T min(T a, T b) {
     return (a < b) ? a : b;

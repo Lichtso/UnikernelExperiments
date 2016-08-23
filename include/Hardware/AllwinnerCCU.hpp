@@ -1,4 +1,4 @@
-#include <AllwinnerPRCM.hpp>
+#include "AllwinnerPRCM.hpp"
 
 struct AllwinnerCCU {
     static const struct Instance {

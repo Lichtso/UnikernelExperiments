@@ -1,4 +1,4 @@
-#include <GICPL400.hpp>
+#include "GICPL400.hpp"
 
 struct AllwinnerTimer {
     static const struct Instance {
