@@ -34,9 +34,18 @@ void swapEndian(DataType& value) {
     value = swapedEndian(value);
 }
 
-void memcpy(void* dst, void* src, Natural32 length) {
+void memcpy(void* dst, const void* src, Natural32 length) {
     for(Natural32 i = 0; i < length; ++i)
-        reinterpret_cast<Natural8*>(dst)[i] = reinterpret_cast<Natural8*>(src)[i];
+        reinterpret_cast<Natural8*>(dst)[i] = reinterpret_cast<const Natural8*>(src)[i];
+}
+
+auto memcmp(const void* a, const void* b, Natural32 length) {
+    for(Natural32 i = 0; i < length; ++i) {
+        auto diff = reinterpret_cast<const Natural8*>(a)[i]-reinterpret_cast<const Natural8*>(b)[i];
+        if(diff != 0)
+            return diff;
+    }
+    return 0;
 }
 
 template<typename T>

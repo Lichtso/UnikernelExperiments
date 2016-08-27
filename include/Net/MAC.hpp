@@ -5,6 +5,19 @@ struct MAC {
 
     struct Address {
         Natural8 bytes[6];
+
+        Address& operator=(const Address& other) {
+            memcpy(this, &other, sizeof(other));
+            return *this;
+        }
+
+        bool operator==(const Address& other) {
+            return memcmp(this, &other, sizeof(other)) == 0;
+        }
+
+        bool operator!=(const Address& other) {
+            return memcmp(this, &other, sizeof(other)) != 0;
+        }
     };
 
     struct Frame {
@@ -77,12 +90,14 @@ struct MAC {
                     transmitPeekDescriptor->status.raw&AllwinnerEMAC::TransmitDescriptor::errorMask,
                     length,
                     reinterpret_cast<Frame*>(transmitedDescriptor->bufferAddress));
-                while(transmitedDescriptor != transmitPeekDescriptor) {
+                while(1) {
                     transmitedDescriptor->status.raw = 0;
                     transmitedDescriptor->control.bufferSize = 0;
+                    bool last = (transmitedDescriptor == transmitPeekDescriptor);
                     transmitedDescriptor = reinterpret_cast<AllwinnerEMAC::TransmitDescriptor*>(transmitedDescriptor->next);
+                    if(last)
+                        break;
                 }
-                transmitedDescriptor = reinterpret_cast<AllwinnerEMAC::TransmitDescriptor*>(transmitedDescriptor->next);
                 length = 0;
             }
             transmitPeekDescriptor = reinterpret_cast<AllwinnerEMAC::TransmitDescriptor*>(transmitPeekDescriptor->next);
@@ -100,11 +115,13 @@ struct MAC {
                     receivePeekDescriptor->status.raw&AllwinnerEMAC::ReceiveDescriptor::errorMask,
                     length,
                     reinterpret_cast<Frame*>(receivedDescriptor->bufferAddress));
-                while(receivedDescriptor != receivePeekDescriptor) {
+                while(1) {
                     receivedDescriptor->status.DMAOwnership = 1;
+                    bool last = (receivedDescriptor == receivePeekDescriptor);
                     receivedDescriptor = reinterpret_cast<AllwinnerEMAC::ReceiveDescriptor*>(receivedDescriptor->next);
+                    if(last)
+                        break;
                 }
-                receivedDescriptor = reinterpret_cast<AllwinnerEMAC::ReceiveDescriptor*>(receivedDescriptor->next);
                 length = 0;
             }
             receivePeekDescriptor = reinterpret_cast<AllwinnerEMAC::ReceiveDescriptor*>(receivePeekDescriptor->next);
@@ -151,17 +168,15 @@ struct MAC {
         auto UART = AllwinnerUART::instances[0].address;
         for(Natural16 j = 0; j < 128; ++j)
             UART->putHex(reinterpret_cast<Natural8*>(frame)[j]);
-        puts(" payload");
+        puts(" frame");
 
         auto index = (reinterpret_cast<Natural32>(frame)-2-reinterpret_cast<Natural32>(transmitBuffers))/bufferSize;
         auto descriptor = &transmitDescriptorRing[index];
         descriptor->status.DMAOwnership = 1;
+
         auto EMAC = AllwinnerEMAC::instances[0].address;
         if(EMAC->transmitDMAStatus.status == AllwinnerEMAC::TransmitStopped ||
-           EMAC->transmitDMAStatus.status == AllwinnerEMAC::TransmitSuspended) {
-            transmitedDescriptor = descriptor;
-            EMAC->transmitDMA = reinterpret_cast<Natural32>(descriptor);
+           EMAC->transmitDMAStatus.status == AllwinnerEMAC::TransmitSuspended)
             EMAC->enableTransmitter(true);
-        }
     }
 };

@@ -25,9 +25,9 @@ struct TCP {
         Natural8 payload[0];
     };
 
-    static void received(IPvAnyPacket* ipPacket, Packet* tcpPacket);
+    static void received(MAC::Frame* macFrame, IPvAnyPacket* ipPacket, Packet* tcpPacket);
 };
 
-void TCP::received(IPvAnyPacket* ipPacket, TCP::Packet* tcpPacket) {
+void TCP::received(MAC::Frame* macFrame, IPvAnyPacket* ipPacket, TCP::Packet* tcpPacket) {
     puts("TCP");
 }

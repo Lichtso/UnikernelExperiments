@@ -11,9 +11,9 @@ struct UDP {
         Natural8 payload[0];
     };
 
-    static void received(IPvAnyPacket* ipPacket, Packet* udpPacket);
+    static void received(MAC::Frame* macFrame, IPvAnyPacket* ipPacket, Packet* udpPacket);
 };
 
-void UDP::received(IPvAnyPacket* ipPacket, UDP::Packet* udpPacket) {
+void UDP::received(MAC::Frame* macFrame, IPvAnyPacket* ipPacket, UDP::Packet* udpPacket) {
     puts("UDP");
 }

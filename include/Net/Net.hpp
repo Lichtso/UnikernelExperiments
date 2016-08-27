@@ -36,10 +36,10 @@ void MAC::received(Natural32 errors, Natural32 length, MAC::Frame* frame) {
 
     switch(frame->type) {
         case IPv4::protocolID:
-            IPv4::received(reinterpret_cast<IPv4::Packet*>(frame->payload));
+            IPv4::received(frame, reinterpret_cast<IPv4::Packet*>(frame->payload));
             break;
         case IPv6::protocolID:
-            IPv6::received(reinterpret_cast<IPv6::Packet*>(frame->payload));
+            IPv6::received(frame, reinterpret_cast<IPv6::Packet*>(frame->payload));
             break;
         default:
             UART->putHex(frame->type);
@@ -49,7 +49,7 @@ void MAC::received(Natural32 errors, Natural32 length, MAC::Frame* frame) {
     puts("");
 }
 
-void IPv4::received(IPv4::Packet* packet) {
+void IPv4::received(MAC::Frame* macFrame, IPv4::Packet* packet) {
     puts("IPv4");
 
     auto UART = AllwinnerUART::instances[0].address;
@@ -68,13 +68,13 @@ void IPv4::received(IPv4::Packet* packet) {
 
     switch(packet->protocol) {
         case ICMPv4::protocolID:
-            redirectToDriver<ICMPv4>(packet);
+            redirectToDriver<ICMPv4>(macFrame, packet);
             break;
         case TCP::protocolID:
-            redirectToDriver<TCP>(packet);
+            redirectToDriver<TCP>(macFrame, packet);
             break;
         case UDP::protocolID:
-            redirectToDriver<UDP>(packet);
+            redirectToDriver<UDP>(macFrame, packet);
             break;
         default:
             UART->putHex(packet->protocol);
@@ -83,7 +83,7 @@ void IPv4::received(IPv4::Packet* packet) {
     }
 }
 
-void IPv6::received(IPv6::Packet* packet) {
+void IPv6::received(MAC::Frame* macFrame, IPv6::Packet* packet) {
     packet->correctEndian();
     puts("IPv6");
 
@@ -97,13 +97,13 @@ void IPv6::received(IPv6::Packet* packet) {
 
     switch(packet->nextHeader) {
         case ICMPv6::protocolID:
-            redirectToDriver<ICMPv6>(packet);
+            redirectToDriver<ICMPv6>(macFrame, packet);
             break;
         case TCP::protocolID:
-            redirectToDriver<TCP>(packet);
+            redirectToDriver<TCP>(macFrame, packet);
             break;
         case UDP::protocolID:
-            redirectToDriver<UDP>(packet);
+            redirectToDriver<UDP>(macFrame, packet);
             break;
         default:
             UART->putHex(packet->nextHeader);

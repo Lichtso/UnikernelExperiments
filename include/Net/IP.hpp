@@ -27,6 +27,19 @@ struct IPv4 {
 
     struct Address {
         Natural8 bytes[4];
+
+        Address& operator=(const Address& other) {
+            memcpy(this, &other, sizeof(other));
+            return *this;
+        }
+
+        bool operator==(const Address& other) {
+            return memcmp(this, &other, sizeof(other)) == 0;
+        }
+
+        bool operator!=(const Address& other) {
+            return memcmp(this, &other, sizeof(other)) != 0;
+        }
     };
 
     struct Packet {
@@ -95,7 +108,7 @@ struct IPv4 {
             identification = 0;
             fragmentOffset = 0;
             flags = 0;
-            timeToLive = 64;
+            timeToLive = 255;
             checksum = 0;
             checksum = headerChecksum();
             correctEndian();
@@ -103,12 +116,13 @@ struct IPv4 {
     };
     static_assert(sizeof(Packet) == 20);
 
-    static void received(Packet* packet);
+    static void received(MAC::Frame* macFrame, Packet* packet);
 
     template<typename PayloadType>
-    static void redirectToDriver(Packet* packet) {
+    static void redirectToDriver(MAC::Frame* macFrame, Packet* packet) {
         if(packet->payloadChecksum<PayloadType>() == 0)
             PayloadType::received(
+                macFrame,
                 reinterpret_cast<IPvAnyPacket*>(packet),
                 reinterpret_cast<typename PayloadType::Packet*>(packet->getPayload())
             );
@@ -121,7 +135,21 @@ struct IPv6 {
 
     struct Address {
         Natural8 bytes[16];
+
+        Address& operator=(const Address& other) {
+            memcpy(this, &other, sizeof(other));
+            return *this;
+        }
+
+        bool operator==(const Address& other) {
+            return memcmp(this, &other, sizeof(other)) == 0;
+        }
+
+        bool operator!=(const Address& other) {
+            return memcmp(this, &other, sizeof(other)) != 0;
+        }
     };
+    static constexpr Address localNetworkSegmentAllNodesMulticastAddress = {{ 0xFF, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 }};
 
     struct Packet {
         union {
@@ -165,55 +193,73 @@ struct IPv6 {
             trafficClass = 0;
             flowLabel = 0;
             payloadLength = length;
-            hopLimit = 64;
+            hopLimit = 255;
             correctEndian();
         }
     };
     static_assert(sizeof(Packet) == 40);
 
-    static void received(Packet* packet);
+    static void received(MAC::Frame* macFrame, Packet* packet);
 
     template<typename PayloadType>
-    static void redirectToDriver(Packet* packet) {
+    static void redirectToDriver(MAC::Frame* macFrame, Packet* packet) {
         if(packet->payloadChecksum<PayloadType>() == 0)
             PayloadType::received(
+                macFrame,
                 reinterpret_cast<IPvAnyPacket*>(packet),
                 reinterpret_cast<typename PayloadType::Packet*>(packet->payload)
             );
         // else // TODO
     }
 
-    static bool addressFromMACAddress(Address* dst, const MAC::Address* src) {
-        // TODO: Multicast Addresses
-        dst->bytes[0] = 0xFE;
-        dst->bytes[1] = 0x80;
-        for(Natural8 i = 2; i < 8; ++i)
-            dst->bytes[i] = 0x00;
-        dst->bytes[8] = src->bytes[0]^0x02;
-        dst->bytes[9] = src->bytes[1];
-        dst->bytes[10] = src->bytes[2];
-        dst->bytes[11] = 0xFF;
-        dst->bytes[12] = 0xFE;
-        dst->bytes[13] = src->bytes[3];
-        dst->bytes[14] = src->bytes[4];
-        dst->bytes[15] = src->bytes[5];
-        return true;
+    static bool addressFromMACAddress(Address& dst, const MAC::Address& src) {
+        if(src.bytes[0] == 0x33 && src.bytes[1] == 0x33) { // Multicast Addresses
+            dst.bytes[0] = 0xFF;
+            for(Natural8 i = 1; i < 12; ++i)
+                dst.bytes[i] = 0x00;
+            for(Natural8 i = 2; i < 6; ++i)
+                dst.bytes[i+10] = src.bytes[i];
+            return true;
+        }
+        if(!(src.bytes[0]&1)) { // Unicast Addresses
+            dst.bytes[0] = 0xFE;
+            dst.bytes[1] = 0x80;
+            for(Natural8 i = 2; i < 8; ++i)
+                dst.bytes[i] = 0x00;
+            dst.bytes[8] = src.bytes[0]^0x02;
+            dst.bytes[9] = src.bytes[1];
+            dst.bytes[10] = src.bytes[2];
+            dst.bytes[11] = 0xFF;
+            dst.bytes[12] = 0xFE;
+            dst.bytes[13] = src.bytes[3];
+            dst.bytes[14] = src.bytes[4];
+            dst.bytes[15] = src.bytes[5];
+            return true;
+        }
+        return false;
     }
 
-    static bool addressToMACAddress(MAC::Address* dst, const Address* src) {
-        // TODO: Multicast Addresses
-        if(src->bytes[0] != 0xFE || src->bytes[2] != 0x80 || src->bytes[11] != 0xFF || src->bytes[12] != 0xFE)
-            return false;
-        for(Natural8 i = 2; i < 8; ++i)
-            if(src->bytes[i] != 0x00)
-                return false;
-        dst->bytes[0] = src->bytes[8]^0x02;
-        dst->bytes[1] = src->bytes[9];
-        dst->bytes[2] = src->bytes[10];
-        dst->bytes[3] = src->bytes[13];
-        dst->bytes[4] = src->bytes[14];
-        dst->bytes[5] = src->bytes[15];
-        return true;
+    static bool addressToMACAddress(MAC::Address& dst, const Address& src) {
+        if(src.bytes[0] == 0xFF) { // Multicast Addresses
+            dst.bytes[0] = 0x33;
+            dst.bytes[1] = 0x33;
+            for(Natural8 i = 2; i < 6; ++i)
+                dst.bytes[i] = src.bytes[i+10];
+            return true;
+        }
+        if(src.bytes[0] == 0xFE && src.bytes[2] == 0x80 && src.bytes[11] == 0xFF && src.bytes[12] == 0xFE) { // Unicast Addresses
+            for(Natural8 i = 2; i < 8; ++i)
+                if(src.bytes[i] != 0x00)
+                    return false;
+            dst.bytes[0] = src.bytes[8]^0x02;
+            dst.bytes[1] = src.bytes[9];
+            dst.bytes[2] = src.bytes[10];
+            dst.bytes[3] = src.bytes[13];
+            dst.bytes[4] = src.bytes[14];
+            dst.bytes[5] = src.bytes[15];
+            return true;
+        }
+        return false;
     }
 };
 

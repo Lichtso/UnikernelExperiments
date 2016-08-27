@@ -12,8 +12,8 @@ Bootloader / unikernel for the Pine64+
 - Software Driver
     - 64 Bit: ARMv8 / ARM64 / AArch64
     - Interrupt Handling
-    - IPv4
-    - IPv6 [WIP]
+    - IPv4 / ICMPv4
+    - IPv6 / ICMPv6 [WIP]
     - TCP
     - UDP
 
@@ -27,7 +27,20 @@ Bootloader / unikernel for the Pine64+
     - SD-Card
 
 
-## Use Cases
-- Educational
-- Experimental Development
-- Zero overhead: High speed / low latency
+## What is different
+
+There are some similarities to other unikernels like [IncludeOS](https://github.com/hioa-cs/IncludeOS) in terms of:
+- security
+- latency / realtime
+- speed
+- energy consumption
+- memory used
+
+But this project does not aim to be POSIX or UNIX compatible, instead it is absolutely minimalistic.
+
+
+## Example Use Cases
+
+- Education
+- Experimental development
+- Internet of Things

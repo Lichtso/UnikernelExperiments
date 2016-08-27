@@ -168,8 +168,7 @@ struct AllwinnerEMAC {
         struct {
             Natural32 flushFIFODisable : 1,
                       DMAFIFOThresholdDisable : 1,
-                      nextFrame : 1, // TODO: Undocumented
-                      pad0 : 5,
+                      pad0 : 6,
                       DMAFIFOThresholdValue : 3,
                       pad1 : 19,
                       DMAEnable : 1,
@@ -315,7 +314,7 @@ struct AllwinnerEMAC {
         } else
             puts("[ OK ] RTL8211E-VB");
 
-        Natural8 address[] = { 0x36, 0xC9, 0xE3, 0xF1, 0xB8, 0x05 }; // 36:C9:E3:F1:B8:05
+        Natural8 address[] = { 0x36, 0xC9, 0xE3, 0xF1, 0xB8, 0x05 };
         setMACAddress(0, address);
 
         while(!link());
@@ -338,7 +337,7 @@ struct AllwinnerEMAC {
 
         receiveControl0.flowControlEnable = 0;
         receiveControl0.unicastPauseFrameEnable = 0;
-        receiveControl0.checksumEnable = 1;
+        receiveControl0.checksumEnable = 0;
         receiveControl0.stripFCSOnShortFrames = 0;
         receiveControl0.jumboFrameEnable = 1;
         receiveControl0.truncateFramesDisable = 0;
