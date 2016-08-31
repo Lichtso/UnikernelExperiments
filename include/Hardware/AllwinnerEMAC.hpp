@@ -137,25 +137,7 @@ struct AllwinnerEMAC {
                       RGMIIStatusChanged : 1;
         };
         Natural32 raw;
-    } interruptStatus;
-    union {
-        struct {
-            Natural32 TXCompleted : 1,
-                      TXDMAStopped : 1,
-                      TXDMAOwnership : 1,
-                      TXTimeout : 1,
-                      TXUnderflow : 1,
-                      TXEarly : 1,
-                      pad0 : 2,
-                      RXCompleted : 1,
-                      RXDMAOwnership : 1,
-                      RXDMAStopped : 1,
-                      RXTimeout : 1,
-                      RXOverflow : 1,
-                      RXEarly : 1;
-        };
-        Natural32 raw;
-    } interruptEnable;
+    } interruptStatus, interruptEnable;
     union {
         struct {
             Natural32 pad0 : 30,
@@ -314,17 +296,6 @@ struct AllwinnerEMAC {
         } else
             puts("[ OK ] RTL8211E-VB");
 
-        Natural8 address[] = { 0x36, 0xC9, 0xE3, 0xF1, 0xB8, 0x05 };
-        setMACAddress(0, address);
-
-        while(!link());
-
-        auto UART = AllwinnerUART::instances[0].address;
-        UART->puts("[ OK ] ");
-        const char* speedStrings[] = { "10 Mbps", "100 Mbps", "1 Gbps", "Unknown speed" };
-        UART->puts(speedStrings[MIIRead(0, 17)>>14]);
-        puts(" Ethernet link");
-
         transmitControl0.frameLengthControl = 1;
         transmitControl1.flushFIFODisable = 1;
         transmitControl1.DMAFIFOThresholdDisable = 1;
@@ -363,6 +334,16 @@ struct AllwinnerEMAC {
         receiveFrameFilter.addressFilterDisable = 0;
     }
 
+    void waitForLink() volatile {
+        while(!link());
+
+        auto UART = AllwinnerUART::instances[0].address;
+        UART->puts("[ OK ] ");
+        const char* speedStrings[] = { "10 Mbps", "100 Mbps", "1 Gbps", "Unknown speed" };
+        UART->puts(speedStrings[MIIRead(0, 17)>>14]);
+        puts(" Ethernet link");
+    }
+
     Natural16 MIIRead(Natural8 deviceAddress, Natural8 registerAddress) volatile {
         MIICommandRegister.deviceAddress = deviceAddress;
         MIICommandRegister.registerAddress = registerAddress;
@@ -397,9 +378,9 @@ struct AllwinnerEMAC {
         return MIIRead(0, 17)&(1<<10);
     }
 
-    void setMACAddress(Natural8 index, void* buffer) volatile {
+    void setMACAddress(Natural8 index, const void* buffer) volatile {
         auto dst = reinterpret_cast<volatile Natural32*>(&MAC0High)+index*2;
-        auto src = reinterpret_cast<Natural16*>(buffer);
+        auto src = reinterpret_cast<const Natural16*>(buffer);
         dst[0] &= ~(0xFFFF);
         dst[0] |= src[0];
         dst[1] = (src[2]<<16)|src[1];

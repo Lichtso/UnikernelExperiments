@@ -27,14 +27,6 @@ struct AllwinnerRSB {
         struct {
             Natural32 transferComplete : 1,
                       transferError : 1,
-                      loadingBusy : 1;
-        };
-        Natural32 raw;
-    } interruptEnable;
-    union {
-        struct {
-            Natural32 transferComplete : 1,
-                      transferError : 1,
                       loadingBusy : 1,
                       pad0 : 5,
                       errorData : 4,
@@ -42,7 +34,7 @@ struct AllwinnerRSB {
                       errorAcknowledgement : 1;
         };
         Natural32 raw;
-    } status;
+    } interruptEnable, status;
     union {
         Natural8 byte;
         Natural32 raw;

@@ -27,7 +27,7 @@ Bootloader / unikernel for the Pine64+
     - SD-Card
 
 
-## What is different
+## Aim of the Project
 
 There are some similarities to other unikernels like [IncludeOS](https://github.com/hioa-cs/IncludeOS) in terms of:
 - security

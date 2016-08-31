@@ -128,6 +128,40 @@ struct IPv4 {
             );
         // else // TODO
     }
+
+    static bool addressFromMACAddress(Address& dst, const MAC::Address& src) {
+        if(src.bytes[0] == 0x01 && src.bytes[1] == 0x00 && src.bytes[2] == 0x5E && !(src.bytes[3]&0x80)) { // Multicast Addresses
+            dst.bytes[0] = 224;
+            dst.bytes[1] = src.bytes[3];
+            dst.bytes[2] = src.bytes[4];
+            dst.bytes[3] = src.bytes[5];
+            return true;
+        }
+        for(Natural8 i = 0; i < 6; ++i) // Broadcast Address
+            if(src.bytes[i] != 0xFF)
+                return false;
+        for(Natural8 i = 0; i < 4; ++i)
+            dst.bytes[i] = 255;
+        return true;
+    }
+
+    static bool addressToMACAddress(MAC::Address& dst, const Address& src) {
+        if(src.bytes[0] >= 224 && src.bytes[0] <= 239) { // Multicast Addresses
+            dst.bytes[0] = 0x01;
+            dst.bytes[1] = 0x00;
+            dst.bytes[2] = 0x5E;
+            dst.bytes[3] = src.bytes[1]&0x7F;
+            dst.bytes[4] = src.bytes[2];
+            dst.bytes[5] = src.bytes[3];
+            return true;
+        }
+        for(Natural8 i = 0; i < 4; ++i) // Broadcast Address
+            if(src.bytes[i] != 255)
+                return false;
+        for(Natural8 i = 0; i < 6; ++i)
+            dst.bytes[i] = 0xFF;
+        return true;
+    }
 };
 
 struct IPv6 {

@@ -1,4 +1,4 @@
-#include "AllwinnerEMAC.hpp"
+#include "AllwinnerSMHC.hpp"
 
 const struct AllwinnerCPUCFG::Instance AllwinnerCPUCFG::instances[] = {
     { reinterpret_cast<AllwinnerCPUCFG*>(0x01F01C00) }
@@ -6,6 +6,12 @@ const struct AllwinnerCPUCFG::Instance AllwinnerCPUCFG::instances[] = {
 
 const struct AllwinnerSYSCTL::Instance AllwinnerSYSCTL::instances[] = {
     { reinterpret_cast<AllwinnerSYSCTL*>(0x01C00000) }
+};
+
+const struct AllwinnerSMHC::Instance AllwinnerSMHC::instances[] = {
+    { reinterpret_cast<AllwinnerSMHC*>(0x01C0F000) },
+    { reinterpret_cast<AllwinnerSMHC*>(0x01C10000) },
+    { reinterpret_cast<AllwinnerSMHC*>(0x01C11000) }
 };
 
 const struct AllwinnerCCU::Instance AllwinnerCCU::instances[] = {

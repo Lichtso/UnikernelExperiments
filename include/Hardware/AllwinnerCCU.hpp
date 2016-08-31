@@ -35,9 +35,7 @@ struct AllwinnerCCU {
         pad7[2],
         NANDClock,
         pad8,
-        SDMMC0Clock,
-        SDMMC1Clock,
-        SDMMC2Clock,
+        SMHCClock[3],
         pad9,
         TSClock,
         CEClock,
@@ -238,5 +236,15 @@ struct AllwinnerCCU {
         BusClockGating[0] |= (1<<14); // 0x01C20060 : DRAM_GATING
         MBUSClock = 0x81000002; // 0x01C2015C
         DRAMConfiguration |= (1<<31); // 0x01C200F4 : DRAM_CTR_RST
+    }
+
+    void configureSMHC() volatile {
+        BusClockGating[0] |= (7<<8); // 8, 9, 10
+        BusSoftwareReset0 |= (7<<8); // 8, 9, 10
+
+        // TODO: The recommended clock frequency is 200MHz.
+        // SMHCClock[0] = ;
+        // SMHCClock[1] = ;
+        // SMHCClock[2] = ;
     }
 };

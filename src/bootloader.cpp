@@ -24,11 +24,11 @@ void main() {
     CCU->configureDRAM();
     DRAM::initialize();
 
-    auto MAC = reinterpret_cast<struct MAC*>(DRAM::instances[0].address);
+    auto EMACDriver = reinterpret_cast<AllwinnerEMACDriver*>(DRAM::instances[0].address);
     AXP803::configureDC1SW();
     CCU->configureEMAC();
-    MAC->initialize();
+    EMACDriver->initialize();
 
     while(1)
-        MAC->poll();
+        EMACDriver->poll();
 }

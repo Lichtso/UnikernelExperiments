@@ -12,14 +12,7 @@ struct AllwinnerTimer {
                       timer1 : 1;
         };
         Natural32 raw;
-    } timerIRQEnable;
-    union {
-        struct {
-            Natural32 timer0 : 1,
-                      timer1 : 1;
-        };
-        Natural32 raw;
-    } timerIRQStatus;
+    } timerIRQEnable, timerIRQStatus;
     Natural32 pad0[2];
     struct {
         union {
