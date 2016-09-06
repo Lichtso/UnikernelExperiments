@@ -1,6 +1,6 @@
-#include "MAC.hpp"
+#include "Mac.hpp"
 
-struct IPChecksumGenerator {
+struct IpChecksumGenerator {
     Natural32 accumulator = 0;
 
     void input(Natural32 length, void* typelessBuffer) {
@@ -20,9 +20,9 @@ struct IPChecksumGenerator {
     }
 };
 
-union IPvAnyPacket;
+union IpvAnyPacket;
 
-struct IPv4 {
+struct Ipv4 {
     static constexpr Natural16 protocolID = 0x0800;
 
     struct Address {
@@ -63,7 +63,7 @@ struct IPv4 {
         Natural8 data[0];
 
         Natural16 headerChecksum() {
-            IPChecksumGenerator generator;
+            IpChecksumGenerator generator;
             generator.input(internetHeaderLength*4, this);
             return generator.output();
         }
@@ -86,7 +86,7 @@ struct IPv4 {
                 0, PayloadHeader::protocolID,
                 swapedEndian(payloadLength)
             };
-            IPChecksumGenerator generator;
+            IpChecksumGenerator generator;
             generator.input(2*sizeof(Address), &sourceAddress);
             generator.input(sizeof(pseudoHeader), &pseudoHeader);
             generator.input(payloadLength, getPayload());
@@ -97,39 +97,39 @@ struct IPv4 {
             swapEndian(totalLength);
             swapEndian(identification);
             swapEndian(swap0);
-            swapEndian(checksum);
         }
 
-        void prepareTransmit(Natural16 length) {
+        void prepareTransmit(Mac::Frame* macFrame) {
+            macFrame->type = protocolID;
             version = 4;
             internetHeaderLength = 5;
             typeOfService = 0;
-            totalLength = length+internetHeaderLength*4;
+            totalLength += internetHeaderLength*4;
             identification = 0;
             fragmentOffset = 0;
             flags = 0;
             timeToLive = 255;
+            correctEndian();
             checksum = 0;
             checksum = headerChecksum();
-            correctEndian();
         }
     };
     static_assert(sizeof(Packet) == 20);
 
-    static void received(MAC::Frame* macFrame, Packet* packet);
+    static void received(Mac::Frame* macFrame, Packet* packet);
 
     template<typename PayloadType>
-    static void redirectToDriver(MAC::Frame* macFrame, Packet* packet) {
+    static void redirectToDriver(Mac::Frame* macFrame, Packet* packet) {
         if(packet->payloadChecksum<PayloadType>() == 0)
             PayloadType::received(
                 macFrame,
-                reinterpret_cast<IPvAnyPacket*>(packet),
+                reinterpret_cast<IpvAnyPacket*>(packet),
                 reinterpret_cast<typename PayloadType::Packet*>(packet->getPayload())
             );
         // else // TODO
     }
 
-    static bool addressFromMACAddress(Address& dst, const MAC::Address& src) {
+    static bool addressFromMACAddress(Address& dst, const Mac::Address& src) {
         if(src.bytes[0] == 0x01 && src.bytes[1] == 0x00 && src.bytes[2] == 0x5E && !(src.bytes[3]&0x80)) { // Multicast Addresses
             dst.bytes[0] = 224;
             dst.bytes[1] = src.bytes[3];
@@ -145,7 +145,7 @@ struct IPv4 {
         return true;
     }
 
-    static bool addressToMACAddress(MAC::Address& dst, const Address& src) {
+    static bool addressToMACAddress(Mac::Address& dst, const Address& src) {
         if(src.bytes[0] >= 224 && src.bytes[0] <= 239) { // Multicast Addresses
             dst.bytes[0] = 0x01;
             dst.bytes[1] = 0x00;
@@ -164,7 +164,7 @@ struct IPv4 {
     }
 };
 
-struct IPv6 {
+struct Ipv6 {
     static constexpr Natural16 protocolID = 0x86DD;
 
     struct Address {
@@ -210,7 +210,7 @@ struct IPv6 {
                 swapedEndian(payloadLength),
                 { 0, 0, 0 }, PayloadType::protocolID
             };
-            IPChecksumGenerator generator;
+            IpChecksumGenerator generator;
             generator.input(2*sizeof(Address), &sourceAddress);
             generator.input(sizeof(pseudoHeader), &pseudoHeader);
             generator.input(payloadLength, payload);
@@ -222,31 +222,31 @@ struct IPv6 {
             swapEndian(payloadLength);
         }
 
-        void prepareTransmit(Natural16 length) {
+        void prepareTransmit(Mac::Frame* macFrame) {
+            macFrame->type = protocolID;
             version = 6;
             trafficClass = 0;
             flowLabel = 0;
-            payloadLength = length;
             hopLimit = 255;
             correctEndian();
         }
     };
     static_assert(sizeof(Packet) == 40);
 
-    static void received(MAC::Frame* macFrame, Packet* packet);
+    static void received(Mac::Frame* macFrame, Packet* packet);
 
     template<typename PayloadType>
-    static void redirectToDriver(MAC::Frame* macFrame, Packet* packet) {
+    static void redirectToDriver(Mac::Frame* macFrame, Packet* packet) {
         if(packet->payloadChecksum<PayloadType>() == 0)
             PayloadType::received(
                 macFrame,
-                reinterpret_cast<IPvAnyPacket*>(packet),
+                reinterpret_cast<IpvAnyPacket*>(packet),
                 reinterpret_cast<typename PayloadType::Packet*>(packet->payload)
             );
         // else // TODO
     }
 
-    static bool addressFromMACAddress(Address& dst, const MAC::Address& src) {
+    static bool addressFromMACAddress(Address& dst, const Mac::Address& src) {
         if(src.bytes[0] == 0x33 && src.bytes[1] == 0x33) { // Multicast Addresses
             dst.bytes[0] = 0xFF;
             for(Natural8 i = 1; i < 12; ++i)
@@ -255,7 +255,7 @@ struct IPv6 {
                 dst.bytes[i+10] = src.bytes[i];
             return true;
         }
-        if(!(src.bytes[0]&1)) { // Unicast Addresses
+        if(!(src.bytes[0]&1)) { // EUI-64
             dst.bytes[0] = 0xFE;
             dst.bytes[1] = 0x80;
             for(Natural8 i = 2; i < 8; ++i)
@@ -273,7 +273,7 @@ struct IPv6 {
         return false;
     }
 
-    static bool addressToMACAddress(MAC::Address& dst, const Address& src) {
+    static bool addressToMACAddress(Mac::Address& dst, const Address& src) {
         if(src.bytes[0] == 0xFF) { // Multicast Addresses
             dst.bytes[0] = 0x33;
             dst.bytes[1] = 0x33;
@@ -281,7 +281,7 @@ struct IPv6 {
                 dst.bytes[i] = src.bytes[i+10];
             return true;
         }
-        if(src.bytes[0] == 0xFE && src.bytes[2] == 0x80 && src.bytes[11] == 0xFF && src.bytes[12] == 0xFE) { // Unicast Addresses
+        if(src.bytes[0] == 0xFE && src.bytes[2] == 0x80 && src.bytes[11] == 0xFF && src.bytes[12] == 0xFE) { // EUI-64
             for(Natural8 i = 2; i < 8; ++i)
                 if(src.bytes[i] != 0x00)
                     return false;
@@ -297,7 +297,11 @@ struct IPv6 {
     }
 };
 
-union IPvAnyPacket {
-    IPv4::Packet v4;
-    IPv6::Packet v6;
+union IpvAnyPacket {
+    Ipv4::Packet v4;
+    Ipv6::Packet v6;
+
+    Natural8 getVersion() {
+        return v4.version;
+    }
 };

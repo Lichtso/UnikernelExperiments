@@ -1,6 +1,6 @@
-#include "ICMP.hpp"
+#include "Icmp.hpp"
 
-struct TCP {
+struct Tcp {
     static constexpr Natural8 protocolID = 6;
 
     struct Packet {
@@ -23,11 +23,23 @@ struct TCP {
                   checksum,
                   urgentPointer;
         Natural8 payload[0];
+
+        void correctEndian() {
+            swapEndian(sourcePort);
+            swapEndian(destinationPort);
+            swapEndian(sequenceNumber);
+            swapEndian(acknowledgmentNumber);
+            swapEndian(windowSize);
+            swapEndian(checksum);
+            swapEndian(urgentPointer);
+        }
     };
 
-    static void received(MAC::Frame* macFrame, IPvAnyPacket* ipPacket, Packet* tcpPacket);
+    static void received(Mac::Frame* macFrame, IpvAnyPacket* ipPacket, Packet* tcpPacket);
 };
 
-void TCP::received(MAC::Frame* macFrame, IPvAnyPacket* ipPacket, TCP::Packet* tcpPacket) {
+void Tcp::received(Mac::Frame* macFrame, IpvAnyPacket* ipPacket, Tcp::Packet* tcpPacket) {
     puts("TCP");
+
+    tcpPacket->correctEndian();
 }

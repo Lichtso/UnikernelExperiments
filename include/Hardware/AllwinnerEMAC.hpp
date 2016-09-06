@@ -59,7 +59,8 @@ struct AllwinnerEMAC {
             };
             Natural32 raw;
         } control;
-        Natural32 bufferAddress, next;
+        Natural32 bufferAddress,
+                  next;
     };
 
     struct ReceiveDescriptor {
@@ -98,7 +99,8 @@ struct AllwinnerEMAC {
             };
             Natural32 raw;
         } control;
-        Natural32 bufferAddress, next;
+        Natural32 bufferAddress,
+                  next;
     };
 
     union {
@@ -137,7 +139,8 @@ struct AllwinnerEMAC {
                       RGMIIStatusChanged : 1;
         };
         Natural32 raw;
-    } interruptStatus, interruptEnable;
+    } interruptStatus,
+      interruptEnable;
     union {
         struct {
             Natural32 pad0 : 30,
@@ -203,8 +206,7 @@ struct AllwinnerEMAC {
         };
         Natural32 raw;
     } receiveControl1;
-    Natural32 pad1[2];
-    Natural32 receiveDMA;
+    Natural32 pad1[2], receiveDMA;
     union {
         struct {
             Natural32 allPass : 1,
@@ -226,8 +228,7 @@ struct AllwinnerEMAC {
         };
         Natural32 raw;
     } receiveFrameFilter;
-    Natural32 pad2;
-    Natural32 receiveHashTableUpper, receiveHashTableLower;
+    Natural32 pad2, receiveHashTableUpper, receiveHashTableLower;
     union {
         struct {
             Natural32 busy : 1,
@@ -241,7 +242,8 @@ struct AllwinnerEMAC {
         };
         Natural32 raw;
     } MIICommandRegister;
-    Natural32 MIIData, MAC0High, MAC0Low;
+    Natural32 MIIData,
+              MAC0High, MAC0Low;
     struct {
         struct {
             Natural32 high : 16,

@@ -1,6 +1,6 @@
-#include "UDP.hpp"
+#include "Udp.hpp"
 
-struct AllwinnerEMACDriver : public MAC {
+struct AllwinnerEMACDriver : public Mac {
     static const Natural16 transmitBufferCount = 128, receiveBufferCount = 128, bufferSize = 1536;
 
     AllwinnerEMAC::TransmitDescriptor transmitDescriptorRing[transmitBufferCount];
@@ -16,7 +16,6 @@ struct AllwinnerEMACDriver : public MAC {
         EMAC->initialize();
         EMAC->waitForLink();
 
-        // ping6 FE80::34C9:E3FF:FEF1:B805%en0
         // 36:C9:E3:F1:B8:05
         Address address = {{ 0x36, 0xC9, 0xE3, 0xF1, 0xB8, 0x05 }};
         setMACAddress(address);
@@ -109,9 +108,9 @@ struct AllwinnerEMACDriver : public MAC {
         }
     }
 
-    Frame* prepareTransmit(Natural16 totalLength) {
+    Frame* prepareTransmit(Natural16 payloadLength) {
         auto descriptor = transmitableDescriptor;
-        auto remainingLength = totalLength;
+        Natural16 totalLength = sizeof(Frame)+payloadLength, remainingLength = totalLength;
         while(1) {
             if(descriptor->control.bufferSize > 0)
                 return nullptr;
@@ -166,7 +165,7 @@ struct AllwinnerEMACDriver : public MAC {
         EMAC->getMACAddress(0, &dst);
     }
 
-    void transmited(Natural32 errors, Natural32 length, MAC::Frame* frame) {
+    void transmited(Natural32 errors, Natural32 length, Mac::Frame* frame) {
         auto UART = AllwinnerUART::instances[0].address;
         if(errors) {
             UART->putHex(errors);
@@ -177,7 +176,7 @@ struct AllwinnerEMACDriver : public MAC {
         puts(" transmit success");
     }
 
-    void received(Natural32 errors, Natural32 length, MAC::Frame* frame) {
+    void received(Natural32 errors, Natural32 length, Mac::Frame* frame) {
         auto UART = AllwinnerUART::instances[0].address;
         for(Natural16 j = 0; j < 128; ++j)
             UART->putHex(reinterpret_cast<Natural8*>(frame)[j]);
@@ -201,11 +200,11 @@ struct AllwinnerEMACDriver : public MAC {
         puts(" source MAC");
 
         switch(frame->type) {
-            case IPv4::protocolID:
-                IPv4::received(frame, reinterpret_cast<IPv4::Packet*>(frame->payload));
+            case Ipv4::protocolID:
+                Ipv4::received(frame, reinterpret_cast<Ipv4::Packet*>(frame->payload));
                 break;
-            case IPv6::protocolID:
-                IPv6::received(frame, reinterpret_cast<IPv6::Packet*>(frame->payload));
+            case Ipv6::protocolID:
+                Ipv6::received(frame, reinterpret_cast<Ipv6::Packet*>(frame->payload));
                 break;
             default:
                 UART->putHex(frame->type);
@@ -216,64 +215,64 @@ struct AllwinnerEMACDriver : public MAC {
     }
 };
 
-void IPv4::received(MAC::Frame* macFrame, IPv4::Packet* packet) {
+void Ipv4::received(Mac::Frame* macFrame, Ipv4::Packet* ipPacket) {
     puts("IPv4");
 
     auto UART = AllwinnerUART::instances[0].address;
-    if(packet->headerChecksum() != 0) {
+    if(ipPacket->headerChecksum() != 0) {
         puts("Checksum error");
         return;
     }
-    packet->correctEndian();
+    ipPacket->correctEndian();
 
     for(Natural16 j = 0; j < 4; ++j)
-        UART->putHex(packet->destinationAddress.bytes[j]);
+        UART->putHex(ipPacket->destinationAddress.bytes[j]);
     puts(" destination IP");
     for(Natural16 j = 0; j < 4; ++j)
-        UART->putHex(packet->sourceAddress.bytes[j]);
+        UART->putHex(ipPacket->sourceAddress.bytes[j]);
     puts(" source IP");
 
-    switch(packet->protocol) {
-        case ICMPv4::protocolID:
-            redirectToDriver<ICMPv4>(macFrame, packet);
+    switch(ipPacket->protocol) {
+        case Icmpv4::protocolID:
+            redirectToDriver<Icmpv4>(macFrame, ipPacket);
             break;
-        case TCP::protocolID:
-            redirectToDriver<TCP>(macFrame, packet);
+        case Tcp::protocolID:
+            redirectToDriver<Tcp>(macFrame, ipPacket);
             break;
-        case UDP::protocolID:
-            redirectToDriver<UDP>(macFrame, packet);
+        case Udp::protocolID:
+            redirectToDriver<Udp>(macFrame, ipPacket);
             break;
         default:
-            UART->putHex(packet->protocol);
+            UART->putHex(ipPacket->protocol);
             puts(" unknown protocol");
             break;
     }
 }
 
-void IPv6::received(MAC::Frame* macFrame, IPv6::Packet* packet) {
-    packet->correctEndian();
+void Ipv6::received(Mac::Frame* macFrame, Ipv6::Packet* ipPacket) {
     puts("IPv6");
+    ipPacket->correctEndian();
 
     auto UART = AllwinnerUART::instances[0].address;
     for(Natural16 j = 0; j < 16; ++j)
-        UART->putHex(packet->destinationAddress.bytes[j]);
+        UART->putHex(ipPacket->destinationAddress.bytes[j]);
     puts(" destination IP");
     for(Natural16 j = 0; j < 16; ++j)
-        UART->putHex(packet->sourceAddress.bytes[j]);
+        UART->putHex(ipPacket->sourceAddress.bytes[j]);
     puts(" source IP");
 
-    switch(packet->nextHeader) {
-        case ICMPv6::protocolID:
-            redirectToDriver<ICMPv6>(macFrame, packet);
+    switch(ipPacket->nextHeader) {
+        case Icmpv6::protocolID:
+            redirectToDriver<Icmpv6>(macFrame, ipPacket);
             break;
-        case TCP::protocolID:
-            redirectToDriver<TCP>(macFrame, packet);
+        case Tcp::protocolID:
+            redirectToDriver<Tcp>(macFrame, ipPacket);
             break;
-        case UDP::protocolID:
-            redirectToDriver<UDP>(macFrame, packet);
+        case Udp::protocolID:
+            redirectToDriver<Udp>(macFrame, ipPacket);
             break;
         default:
-            UART->putHex(packet->nextHeader);
+            UART->putHex(ipPacket->nextHeader);
             puts(" unknown protocol");
             break;
     }

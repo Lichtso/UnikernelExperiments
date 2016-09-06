@@ -1,6 +1,6 @@
-#include "TCP.hpp"
+#include "Tcp.hpp"
 
-struct UDP {
+struct Udp {
     static constexpr Natural8 protocolID = 17;
 
     struct Packet {
@@ -9,11 +9,19 @@ struct UDP {
                   length,
                   checksum;
         Natural8 payload[0];
+
+        void correctEndian() {
+            swapEndian(sourcePort);
+            swapEndian(destinationPort);
+            swapEndian(length);
+            swapEndian(checksum);
+        }
     };
 
-    static void received(MAC::Frame* macFrame, IPvAnyPacket* ipPacket, Packet* udpPacket);
+    static void received(Mac::Frame* macFrame, IpvAnyPacket* ipPacket, Packet* udpPacket);
 };
 
-void UDP::received(MAC::Frame* macFrame, IPvAnyPacket* ipPacket, UDP::Packet* udpPacket) {
+void Udp::received(Mac::Frame* macFrame, IpvAnyPacket* ipPacket, Udp::Packet* udpPacket) {
     puts("UDP");
+    udpPacket->correctEndian();
 }

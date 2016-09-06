@@ -25,7 +25,8 @@ struct AllwinnerSMHC {
             };
             Natural32 raw;
         } control;
-        Natural32 bufferAddress, next;
+        Natural32 bufferAddress,
+                  next;
     };
 
     union {
@@ -128,7 +129,9 @@ struct AllwinnerSMHC {
                       cardRemoved : 1;
         };
         Natural32 raw;
-    } interruptMask, maskedInterruptStatus, rawInterruptStatus;
+    } interruptMask,
+      maskedInterruptStatus,
+      rawInterruptStatus;
     union {
         struct {
             Natural32 FIFOReceiveReachedThreshold : 1,

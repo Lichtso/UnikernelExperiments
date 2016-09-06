@@ -1,6 +1,6 @@
 #include "../Hardware/AllwinnerA64.hpp"
 
-struct MAC {
+struct Mac {
     struct Address {
         Natural8 bytes[6];
 
@@ -31,7 +31,7 @@ struct MAC {
 
     void initialize();
     void poll();
-    Frame* prepareTransmit(Natural16 totalLength);
+    Frame* prepareTransmit(Natural16 payloadLength);
     void transmit(Frame* frame);
 
     void setMACAddress(const Address& src);

@@ -34,7 +34,8 @@ struct AllwinnerRSB {
                       errorAcknowledgement : 1;
         };
         Natural32 raw;
-    } interruptEnable, status;
+    } interruptEnable,
+      status;
     union {
         Natural8 byte;
         Natural32 raw;
