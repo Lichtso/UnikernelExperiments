@@ -143,7 +143,7 @@ struct AllwinnerEMACDriver : public Mac {
         auto UART = AllwinnerUART::instances[0].address;
         for(Natural16 j = 0; j < 128; ++j)
             UART->putHex(reinterpret_cast<Natural8*>(frame)[j]);
-        puts(" frame");
+        UART->puts(" frame");
 
         auto index = (reinterpret_cast<Natural32>(frame)-2-reinterpret_cast<Natural32>(transmitBuffers))/bufferSize;
         auto descriptor = &transmitDescriptorRing[index];
@@ -169,11 +169,11 @@ struct AllwinnerEMACDriver : public Mac {
         auto UART = AllwinnerUART::instances[0].address;
         if(errors) {
             UART->putHex(errors);
-            puts(" transmit errors");
+            puts(" transmit errors\n");
             return;
         }
         UART->putHex(length);
-        puts(" transmit success");
+        puts(" transmit success\n");
     }
 
     void received(Natural32 errors, Natural32 length, Mac::Frame* frame) {

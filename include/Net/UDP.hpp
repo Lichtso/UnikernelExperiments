@@ -6,22 +6,39 @@ struct Udp {
     struct Packet {
         Natural16 sourcePort,
                   destinationPort,
-                  length,
+                  totalLength,
                   checksum;
         Natural8 payload[0];
 
         void correctEndian() {
             swapEndian(sourcePort);
             swapEndian(destinationPort);
-            swapEndian(length);
-            swapEndian(checksum);
+            swapEndian(totalLength);
+        }
+
+        void prepareTransmit(Ipv4::Packet* ipPacket, Natural16 payloadLength) {
+            totalLength = payloadLength+sizeof(*this);
+            ipPacket->protocol = protocolID;
+            ipPacket->totalLength = totalLength;
+            correctEndian();
+            checksum = 0;
+            checksum = ipPacket->payloadChecksum<Udp>();
+        }
+
+        void prepareTransmit(Ipv6::Packet* ipPacket, Natural16 payloadLength) {
+            totalLength = payloadLength+sizeof(*this);
+            ipPacket->nextHeader = protocolID;
+            ipPacket->payloadLength = totalLength;
+            correctEndian();
+            checksum = 0;
+            checksum = ipPacket->payloadChecksum<Udp>();
         }
     };
 
-    static void received(Mac::Frame* macFrame, IpvAnyPacket* ipPacket, Packet* udpPacket);
+    static void received(Mac::Frame* macFrame, IpPacket* ipPacket, Packet* udpPacket);
 };
 
-void Udp::received(Mac::Frame* macFrame, IpvAnyPacket* ipPacket, Udp::Packet* udpPacket) {
+void Udp::received(Mac::Frame* macFrame, IpPacket* ipPacket, Packet* udpPacket) {
     puts("UDP");
     udpPacket->correctEndian();
 }

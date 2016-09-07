@@ -20,7 +20,7 @@ struct IpChecksumGenerator {
     }
 };
 
-union IpvAnyPacket;
+union IpPacket;
 
 struct Ipv4 {
     static constexpr Natural16 protocolID = 0x0800;
@@ -51,7 +51,9 @@ struct Ipv4 {
         union {
             struct {
                 Natural16 fragmentOffset : 13,
-                          flags : 3;
+                          pad0 : 1,
+                          doNotFragment : 1,
+                          moreFragments : 1;
             };
             Natural16 swap0;
         };
@@ -107,7 +109,9 @@ struct Ipv4 {
             totalLength += internetHeaderLength*4;
             identification = 0;
             fragmentOffset = 0;
-            flags = 0;
+            pad0 = 0;
+            doNotFragment = 1;
+            moreFragments = 0;
             timeToLive = 255;
             correctEndian();
             checksum = 0;
@@ -123,7 +127,7 @@ struct Ipv4 {
         if(packet->payloadChecksum<PayloadType>() == 0)
             PayloadType::received(
                 macFrame,
-                reinterpret_cast<IpvAnyPacket*>(packet),
+                reinterpret_cast<IpPacket*>(packet),
                 reinterpret_cast<typename PayloadType::Packet*>(packet->getPayload())
             );
         // else // TODO
@@ -240,10 +244,29 @@ struct Ipv6 {
         if(packet->payloadChecksum<PayloadType>() == 0)
             PayloadType::received(
                 macFrame,
-                reinterpret_cast<IpvAnyPacket*>(packet),
+                reinterpret_cast<IpPacket*>(packet),
                 reinterpret_cast<typename PayloadType::Packet*>(packet->payload)
             );
         // else // TODO
+    }
+
+    static bool addressFromIpv4Address(Address& dst, const Ipv4::Address& src) {
+        for(Natural8 i = 0; i < 10; ++i)
+            dst.bytes[i] = 0x00;
+        dst.bytes[10] = 0xFF;
+        dst.bytes[11] = 0xFF;
+        for(Natural8 i = 0; i < 4; ++i)
+            dst.bytes[i+12] = src.bytes[i];
+        return true;
+    }
+
+    static bool addressToIpv4Address(Ipv4::Address& dst, const Address& src) {
+        for(Natural8 i = 0; i < 10; ++i)
+            if(src.bytes[i] != 0x00)
+                return false;
+        for(Natural8 i = 0; i < 4; ++i)
+            dst.bytes[i] = src.bytes[i+12];
+        return true;
     }
 
     static bool addressFromMACAddress(Address& dst, const Mac::Address& src) {
@@ -281,7 +304,7 @@ struct Ipv6 {
                 dst.bytes[i] = src.bytes[i+10];
             return true;
         }
-        if(src.bytes[0] == 0xFE && src.bytes[2] == 0x80 && src.bytes[11] == 0xFF && src.bytes[12] == 0xFE) { // EUI-64
+        if(src.bytes[0] == 0xFE && src.bytes[1] == 0x80 && src.bytes[11] == 0xFF && src.bytes[12] == 0xFE) { // EUI-64
             for(Natural8 i = 2; i < 8; ++i)
                 if(src.bytes[i] != 0x00)
                     return false;
@@ -297,11 +320,12 @@ struct Ipv6 {
     }
 };
 
-union IpvAnyPacket {
+union IpPacket {
     Ipv4::Packet v4;
     Ipv6::Packet v6;
+};
 
-    Natural8 getVersion() {
-        return v4.version;
-    }
+union IpAddress {
+    Ipv4::Address v4;
+    Ipv6::Address v6;
 };

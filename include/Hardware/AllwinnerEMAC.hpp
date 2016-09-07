@@ -210,7 +210,7 @@ struct AllwinnerEMAC {
     union {
         struct {
             Natural32 allPass : 1,
-                      hashAndAddressFilter: 1,
+                      hybridFilterMode: 1,
                       pad0 : 2,
                       invertDA : 1,
                       invertSA : 1,
@@ -324,7 +324,7 @@ struct AllwinnerEMAC {
         receiveControl1.flowControlThresholdEnable = 0;
 
         receiveFrameFilter.allPass = 0;
-        receiveFrameFilter.hashAndAddressFilter = 0;
+        receiveFrameFilter.hybridFilterMode = 0;
         receiveFrameFilter.invertDA = 0;
         receiveFrameFilter.invertSA = 0;
         receiveFrameFilter.filterSAEnable = 0;
@@ -381,18 +381,24 @@ struct AllwinnerEMAC {
     }
 
     void setMACAddress(Natural8 index, const void* buffer) volatile {
-        auto dst = reinterpret_cast<volatile Natural32*>(&MAC0High)+index*2;
-        auto src = reinterpret_cast<const Natural16*>(buffer);
-        dst[0] &= ~(0xFFFF);
-        dst[0] |= src[0];
-        dst[1] = (src[2]<<16)|src[1];
+        auto dst = reinterpret_cast<volatile Natural8*>(&MAC0High)+index*8;
+        auto src = reinterpret_cast<const Natural8*>(buffer);
+        dst[4] = src[0];
+        dst[5] = src[1];
+        dst[6] = src[2];
+        dst[7] = src[3];
+        dst[0] = src[4];
+        dst[1] = src[5];
     }
 
     void getMACAddress(Natural8 index, void* buffer) volatile {
-        auto src = reinterpret_cast<volatile Natural32*>(&MAC0High)+index*2;
-        auto dst = reinterpret_cast<Natural16*>(buffer);
-        dst[0] = src[0]&0xFFFF;
-        dst[1] = src[1]&0xFFFF;
-        dst[2] = src[1]>>16;
+        auto src = reinterpret_cast<volatile Natural8*>(&MAC0High)+index*8;
+        auto dst = reinterpret_cast<Natural8*>(buffer);
+        dst[0] = src[4];
+        dst[1] = src[5];
+        dst[2] = src[6];
+        dst[3] = src[7];
+        dst[4] = src[0];
+        dst[5] = src[1];
     }
 };
