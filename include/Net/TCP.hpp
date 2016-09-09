@@ -3,6 +3,16 @@
 struct Tcp {
     static constexpr Natural8 protocolID = 6;
 
+    enum OptionType {
+        End = 0,
+        Padding = 1,
+        MaximumSegmentSize = 2,
+        WindowScale = 3,
+        SelectiveAcknowledgementPermitted = 4,
+        SelectiveAcknowledgement = 5,
+        Timestamp = 8
+    };
+
     struct Packet {
         Natural16 sourcePort,
                   destinationPort;
@@ -39,10 +49,33 @@ struct Tcp {
         }
     };
 
-    static void received(Mac::Frame* macFrame, IpPacket* ipPacket, Tcp::Packet* tcpPacket);
+    struct Connection {
+        Natural8 version;
+        Natural16 localPort, remotePort;
+        Ipv6::Address remoteAddress; // TODO: IpvAnyAddress
+
+        // Status
+        // Receive Buffer : DSACK
+        // Transmit Buffer : Retransmission timer
+        // Persist Timer
+        // Congestion control, Slow Start, Congestion Avoidance, TCP-Reno
+        // Maximum segment size
+        // Timestamps
+        Natural8 localWindowScale, remoteWindowScale;
+        bool selectiveAcknowledgmentEnabled;
+        // selectiveAcknowledgmentBuffer
+    };
+
+    static void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv4::Packet* ipPacket, Tcp::Packet* tcpPacket);
+    static void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Tcp::Packet* tcpPacket);
 };
 
-void Tcp::received(Mac::Frame* macFrame, IpPacket* ipPacket, Tcp::Packet* tcpPacket) {
+void Tcp::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv4::Packet* ipPacket, Tcp::Packet* tcpPacket) {
+    puts("TCP");
+    tcpPacket->correctEndian();
+}
+
+void Tcp::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Tcp::Packet* tcpPacket) {
     puts("TCP");
     tcpPacket->correctEndian();
 }

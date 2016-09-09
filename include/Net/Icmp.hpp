@@ -8,26 +8,15 @@ struct Icmpv4 {
         Natural16 checksum;
         Natural8 payload[0];
 
-        template<typename PacketType>
-        void prepareTransmit(Ipv4::Packet* ipPacket, Natural16 payloadLength = sizeof(PacketType)) {
+        void prepareTransmit(Ipv4::Packet* ipPacket, Natural16 payloadLength) {
             ipPacket->protocol = protocolID;
             ipPacket->totalLength = sizeof(Packet)+payloadLength;
-            reinterpret_cast<PacketType*>(payload)->correctEndian();
-            type = PacketType::type;
-            code = PacketType::code;
             checksum = 0;
             checksum = ipPacket->payloadChecksum<Icmpv4>();
         }
     };
 
-    static void received(Mac::Frame* macFrame, IpPacket* ipPacket, Packet* icmpPacket);
-
-    template<typename PayloadType>
-    static void redirectToDriver(Mac::Frame* macFrame, IpPacket* ipPacket, Packet* icmpPacket) {
-        auto packet = reinterpret_cast<PayloadType*>(icmpPacket->payload);
-        packet->correctEndian();
-        packet->received(macFrame, &ipPacket->v4, icmpPacket);
-    }
+    static void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv4::Packet* ipPacket, Packet* icmpPacket);
 };
 
 struct Icmpv6 {
@@ -49,20 +38,86 @@ struct Icmpv6 {
         Natural16 checksum;
         Natural8 payload[0];
 
-        template<typename PacketType>
-        void prepareTransmit(Ipv6::Packet* ipPacket, Natural16 payloadLength = 0) {
+        void prepareTransmit(Ipv6::Packet* ipPacket, Natural16 payloadLength) {
             ipPacket->nextHeader = protocolID;
-            ipPacket->payloadLength = sizeof(Packet)+sizeof(PacketType)+payloadLength;
-            reinterpret_cast<PacketType*>(payload)->correctEndian();
-            type = PacketType::type;
-            code = PacketType::code;
+            ipPacket->payloadLength = sizeof(Packet)+payloadLength;
             checksum = 0;
             checksum = ipPacket->payloadChecksum<Icmpv6>();
         }
     };
 
+    struct DestinationUnreachable {
+        static constexpr Natural8 type = 1;
+        enum Code {
+            NoRouteToDestination = 0,
+            CommunicationProhibited = 1,
+            BeyondScopeOfSourceAddress = 2,
+            AddressUnreachable = 3,
+            PortUnreachable = 4,
+            SourceAddressFailedPolicy = 5,
+            RejectRouteToDestination = 6
+        };
+        Natural32 pad0;
+
+        void correctEndian() { }
+
+        void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+            puts("DestinationUnreachable");
+            correctEndian();
+        }
+    };
+
+    struct PacketTooBig {
+        static constexpr Natural8 type = 2;
+        Natural32 maximumTransmissionUnit;
+
+        void correctEndian() {
+            swapEndian(maximumTransmissionUnit);
+        }
+
+        void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+            puts("PacketTooBig");
+            correctEndian();
+        }
+    };
+
+    struct TimeExceeded {
+        static constexpr Natural8 type = 3;
+        enum Code {
+            HopLimitExceeded = 0,
+            FragmentReassembly = 1
+        };
+        Natural32 pad0;
+
+        void correctEndian() { }
+
+        void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+            puts("TimeExceeded");
+            correctEndian();
+        }
+    };
+
+    struct ParameterProblem {
+        static constexpr Natural8 type = 4;
+        enum Code {
+            ErroneousHeaderField = 0,
+            UnrecognizedNextHeaderType = 1,
+            UnrecognizedIPv6Option = 2,
+        };
+        Natural32 pointer;
+
+        void correctEndian() {
+            swapEndian(pointer);
+        }
+
+        void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+            puts("ParameterProblem");
+            correctEndian();
+        }
+    };
+
     struct EchoRequest {
-        static constexpr Natural8 type = 128, code = 0;
+        static constexpr Natural8 type = 128;
         Natural16 identifier, sequenceNumber;
         Natural8 payload[0];
 
@@ -71,13 +126,16 @@ struct Icmpv6 {
             swapEndian(sequenceNumber);
         }
 
-        void received(Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+        void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
             puts("EchoRequest");
+            correctEndian();
+
+            EchoReply::transmit(macInterface, ipPacket);
         }
     };
 
     struct EchoReply {
-        static constexpr Natural8 type = 129, code = 0;
+        static constexpr Natural8 type = 129;
         Natural16 identifier, sequenceNumber;
         Natural8 payload[0];
 
@@ -86,26 +144,76 @@ struct Icmpv6 {
             swapEndian(sequenceNumber);
         }
 
-        void received(Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+        void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
             puts("EchoReply");
+            correctEndian();
+        }
+
+        static bool transmit(Mac::Interface* macInterface, Ipv6::Packet* requestingIpPacket) {
+            auto macFrame = macInterface->createFrame(sizeof(Ipv6::Packet)+requestingIpPacket->payloadLength);
+            if(!macFrame)
+                return false;
+            auto ipPacket = reinterpret_cast<Ipv6::Packet*>(macFrame->payload);
+            auto icmpPacket = reinterpret_cast<Packet*>(ipPacket->payload);
+            auto echoReply = reinterpret_cast<EchoReply*>(icmpPacket->payload);
+            auto echoRequest = reinterpret_cast<EchoRequest*>(reinterpret_cast<Packet*>(requestingIpPacket->payload)->payload);
+            echoReply->identifier = echoRequest->identifier;
+            echoReply->sequenceNumber = echoRequest->sequenceNumber;
+            echoReply->correctEndian();
+            ipPacket->destinationAddress = requestingIpPacket->sourceAddress;
+            ipPacket->sourceAddress = macInterface->ipv6LinkLocalAddress;
+            icmpPacket->type = type;
+            icmpPacket->code = 0;
+            icmpPacket->prepareTransmit(ipPacket, requestingIpPacket->payloadLength-sizeof(Packet));
+            ipPacket->prepareTransmit(macFrame);
+            IpAddress::ipv6ToMac(macFrame->destinationAddress, ipPacket->destinationAddress);
+            macInterface->transmit(macFrame);
+            return true;
+        }
+    };
+
+    struct MulticastListenerQuery {
+        static constexpr Natural8 type = 130;
+        Natural16 maximumResponseCode, pad0;
+        Ipv6::Address multicastAddress;
+        Natural8 queriersRobustnessVariable : 3,
+                 suppressRouterSideProcessing : 1,
+                 pad1 : 4;
+        Natural8 queriersQueryIntervalCode;
+        Natural16 numberOfSources;
+        Ipv6::Address sourceAddress[0];
+
+        void correctEndian() {
+            swapEndian(maximumResponseCode);
+            swapEndian(numberOfSources);
+        }
+
+        void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+            puts("MulticastListenerQuery");
+            correctEndian();
         }
     };
 
     struct NeighborSolicitation {
-        static constexpr Natural8 type = 135, code = 0;
+        static constexpr Natural8 type = 135;
         Natural32 pad0;
         Ipv6::Address targetAddress;
         Option options[0];
 
         void correctEndian() { }
 
-        void received(Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+        void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
             puts("NeighborSolicitation");
+            correctEndian();
+
+            if(targetAddress != macInterface->ipv6LinkLocalAddress)
+                return;
+            NeighborAdvertisement::transmit(macInterface, ipPacket);
         }
     };
 
     struct NeighborAdvertisement {
-        static constexpr Natural8 type = 136, code = 0;
+        static constexpr Natural8 type = 136;
         Natural32 pad0 : 5,
                   overrideFlag : 1,
                   solicitedFlag : 1,
@@ -116,42 +224,98 @@ struct Icmpv6 {
 
         void correctEndian() { }
 
-        void received(Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+        void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
             puts("NeighborAdvertisement");
+            correctEndian();
+        }
+
+        static bool transmit(Mac::Interface* macInterface, Ipv6::Packet* requestingIpPacket = nullptr) {
+            auto macFrame = macInterface->createFrame(sizeof(Ipv6::Packet)+sizeof(Packet)+sizeof(NeighborAdvertisement)+8);
+            if(!macFrame)
+                return false;
+            auto ipPacket = reinterpret_cast<Ipv6::Packet*>(macFrame->payload);
+            auto icmpPacket = reinterpret_cast<Packet*>(ipPacket->payload);
+            auto neighborAdvertisement = reinterpret_cast<NeighborAdvertisement*>(icmpPacket->payload);
+            neighborAdvertisement->routerFlag = 0;
+            neighborAdvertisement->solicitedFlag = (requestingIpPacket) ? 1 : 0;
+            neighborAdvertisement->overrideFlag = 1;
+            neighborAdvertisement->pad0 = 0;
+            neighborAdvertisement->pad1 = 0;
+            neighborAdvertisement->targetAddress = (requestingIpPacket)
+                ? reinterpret_cast<NeighborSolicitation*>(reinterpret_cast<Packet*>(requestingIpPacket->payload)->payload)->targetAddress
+                : macInterface->ipv6LinkLocalAddress;
+            neighborAdvertisement->options[0].type = Option::TargetLinkLayerAddress;
+            neighborAdvertisement->options[0].chunks = 1;
+            macInterface->getMACAddress(reinterpret_cast<Mac::Address&>(neighborAdvertisement->options[0].payload));
+            neighborAdvertisement->correctEndian();
+            ipPacket->destinationAddress = (requestingIpPacket) ? requestingIpPacket->sourceAddress : Ipv6::localNetworkSegmentAllNodesMulticastAddress;
+            ipPacket->sourceAddress = macInterface->ipv6LinkLocalAddress;
+            icmpPacket->type = type;
+            icmpPacket->code = 0;
+            icmpPacket->prepareTransmit(ipPacket, sizeof(NeighborAdvertisement)+8);
+            ipPacket->prepareTransmit(macFrame);
+            IpAddress::ipv6ToMac(macFrame->destinationAddress, ipPacket->destinationAddress);
+            macInterface->transmit(macFrame);
+            return true;
         }
     };
 
-    static void received(Mac::Frame* macFrame, IpPacket* ipPacket, Packet* icmpPacket);
+    struct MulticastListenerReport {
+        static constexpr Natural8 type = 143;
+        Natural16 pad0, numberOfRecords;
+        struct MulticastListenerRecord {
+            enum Type {
+                MODE_IS_INCLUDE = 1,
+                MODE_IS_EXCLUDE = 2,
+                CHANGE_TO_INCLUDE_MODE = 3,
+                CHANGE_TO_EXCLUDE_MODE = 4,
+                ALLOW_NEW_SOURCES = 5,
+                BLOCK_OLD_SOURCES = 6
+            };
+            Natural8 type, auxDataLength;
+            Natural16 numberOfSources;
+            Ipv6::Address multicastAddress, sourceAddress[0];
+        } records[0];
 
-    template<typename PayloadType>
-    static void redirectToDriver(Mac::Frame* macFrame, IpPacket* ipPacket, Packet* icmpPacket) {
-        auto packet = reinterpret_cast<PayloadType*>(icmpPacket->payload);
-        packet->correctEndian();
-        packet->received(macFrame, &ipPacket->v6, icmpPacket);
-    }
+        void correctEndian() {
+            swapEndian(numberOfRecords);
+            for(Natural16 i = 0; i < numberOfRecords; ++i)
+                swapEndian(records[i].numberOfSources);
+        }
+
+        void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+            puts("MulticastListenerReport");
+            correctEndian();
+        }
+    };
+
+    static void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket);
 };
 
-void Icmpv4::received(Mac::Frame* macFrame, IpPacket* ipPacket, Icmpv4::Packet* icmpPacket) {
+#define IcmpReceivedCase(PayloadType) \
+    case PayloadType::type: \
+        reinterpret_cast<PayloadType*>(icmpPacket->payload)->received(macInterface, macFrame, ipPacket, icmpPacket); \
+        break;
+
+void Icmpv4::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv4::Packet* ipPacket, Icmpv4::Packet* icmpPacket) {
     puts("ICMPv4");
 }
 
-void Icmpv6::received(Mac::Frame* macFrame, IpPacket* ipPacket, Icmpv6::Packet* icmpPacket) {
+void Icmpv6::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Icmpv6::Packet* icmpPacket) {
     puts("ICMPv6");
 
     auto UART = AllwinnerUART::instances[0].address;
     switch(icmpPacket->type) {
-        case Icmpv6::EchoRequest::type:
-            redirectToDriver<Icmpv6::EchoRequest>(macFrame, ipPacket, icmpPacket);
-            break;
-        case Icmpv6::EchoReply::type:
-            redirectToDriver<Icmpv6::EchoReply>(macFrame, ipPacket, icmpPacket);
-            break;
-        case Icmpv6::NeighborSolicitation::type:
-            redirectToDriver<Icmpv6::NeighborSolicitation>(macFrame, ipPacket, icmpPacket);
-            break;
-        case Icmpv6::NeighborAdvertisement::type:
-            redirectToDriver<Icmpv6::NeighborAdvertisement>(macFrame, ipPacket, icmpPacket);
-            break;
+        // IcmpReceivedCase(DestinationUnreachable)
+        // IcmpReceivedCase(PacketTooBig)
+        // IcmpReceivedCase(TimeExceeded)
+        // IcmpReceivedCase(ParameterProblem)
+        IcmpReceivedCase(EchoRequest)
+        // IcmpReceivedCase(EchoReply)
+        IcmpReceivedCase(MulticastListenerQuery)
+        IcmpReceivedCase(NeighborSolicitation)
+        // IcmpReceivedCase(NeighborAdvertisement)
+        // IcmpReceivedCase(MulticastListenerReport)
         default:
             UART->putHex(icmpPacket->type);
             puts(" unknown type");

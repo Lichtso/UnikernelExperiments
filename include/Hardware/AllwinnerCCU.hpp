@@ -247,4 +247,9 @@ struct AllwinnerCCU {
         // SMHCClock[1] = ;
         // SMHCClock[2] = ;
     }
+
+    void configureHSTimer() volatile {
+        BusClockGating[0] |= (1<<19);
+        BusSoftwareReset0 |= (1<<19);
+    }
 };

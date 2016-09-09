@@ -120,52 +120,7 @@ struct Ipv4 {
     };
     static_assert(sizeof(Packet) == 20);
 
-    static void received(Mac::Frame* macFrame, Packet* packet);
-
-    template<typename PayloadType>
-    static void redirectToDriver(Mac::Frame* macFrame, Packet* packet) {
-        if(packet->payloadChecksum<PayloadType>() == 0)
-            PayloadType::received(
-                macFrame,
-                reinterpret_cast<IpPacket*>(packet),
-                reinterpret_cast<typename PayloadType::Packet*>(packet->getPayload())
-            );
-        // else // TODO
-    }
-
-    static bool addressFromMACAddress(Address& dst, const Mac::Address& src) {
-        if(src.bytes[0] == 0x01 && src.bytes[1] == 0x00 && src.bytes[2] == 0x5E && !(src.bytes[3]&0x80)) { // Multicast Addresses
-            dst.bytes[0] = 224;
-            dst.bytes[1] = src.bytes[3];
-            dst.bytes[2] = src.bytes[4];
-            dst.bytes[3] = src.bytes[5];
-            return true;
-        }
-        for(Natural8 i = 0; i < 6; ++i) // Broadcast Address
-            if(src.bytes[i] != 0xFF)
-                return false;
-        for(Natural8 i = 0; i < 4; ++i)
-            dst.bytes[i] = 255;
-        return true;
-    }
-
-    static bool addressToMACAddress(Mac::Address& dst, const Address& src) {
-        if(src.bytes[0] >= 224 && src.bytes[0] <= 239) { // Multicast Addresses
-            dst.bytes[0] = 0x01;
-            dst.bytes[1] = 0x00;
-            dst.bytes[2] = 0x5E;
-            dst.bytes[3] = src.bytes[1]&0x7F;
-            dst.bytes[4] = src.bytes[2];
-            dst.bytes[5] = src.bytes[3];
-            return true;
-        }
-        for(Natural8 i = 0; i < 4; ++i) // Broadcast Address
-            if(src.bytes[i] != 255)
-                return false;
-        for(Natural8 i = 0; i < 6; ++i)
-            dst.bytes[i] = 0xFF;
-        return true;
-    }
+    static void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Packet* packet);
 };
 
 struct Ipv6 {
@@ -237,39 +192,59 @@ struct Ipv6 {
     };
     static_assert(sizeof(Packet) == 40);
 
-    static void received(Mac::Frame* macFrame, Packet* packet);
+    static void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Packet* packet);
+};
 
-    template<typename PayloadType>
-    static void redirectToDriver(Mac::Frame* macFrame, Packet* packet) {
-        if(packet->payloadChecksum<PayloadType>() == 0)
-            PayloadType::received(
-                macFrame,
-                reinterpret_cast<IpPacket*>(packet),
-                reinterpret_cast<typename PayloadType::Packet*>(packet->payload)
-            );
-        // else // TODO
+struct IpAddress {
+    static bool macToIpv4(Ipv4::Address& dst, const Mac::Address& src) {
+        if(src.bytes[0] == 0x01 && src.bytes[1] == 0x00 && src.bytes[2] == 0x5E && !(src.bytes[3]&0x80)) { // Multicast Addresses
+            dst.bytes[0] = 224;
+            dst.bytes[1] = src.bytes[3];
+            dst.bytes[2] = src.bytes[4];
+            dst.bytes[3] = src.bytes[5];
+            return true;
+        }
+        for(Natural8 i = 0; i < 6; ++i) // Broadcast Address
+            if(src.bytes[i] != 0xFF)
+                return false;
+        for(Natural8 i = 0; i < 4; ++i)
+            dst.bytes[i] = 255;
+        return true;
     }
 
-    static bool addressFromIpv4Address(Address& dst, const Ipv4::Address& src) {
+    static bool ipv4ToMac(Mac::Address& dst, const Ipv4::Address& src) {
+        if(src.bytes[0] >= 224 && src.bytes[0] <= 239) { // Multicast Addresses
+            dst.bytes[0] = 0x01;
+            dst.bytes[1] = 0x00;
+            dst.bytes[2] = 0x5E;
+            dst.bytes[3] = src.bytes[1]&0x7F;
+            dst.bytes[4] = src.bytes[2];
+            dst.bytes[5] = src.bytes[3];
+            return true;
+        }
+        for(Natural8 i = 0; i < 4; ++i) // Broadcast Address
+            if(src.bytes[i] != 255)
+                return false;
+        for(Natural8 i = 0; i < 6; ++i)
+            dst.bytes[i] = 0xFF;
+        return true;
+    }
+
+    static void ipv4ToIpv6(Ipv6::Address& dst, const Ipv4::Address& src) {
         for(Natural8 i = 0; i < 10; ++i)
             dst.bytes[i] = 0x00;
         dst.bytes[10] = 0xFF;
         dst.bytes[11] = 0xFF;
         for(Natural8 i = 0; i < 4; ++i)
             dst.bytes[i+12] = src.bytes[i];
-        return true;
     }
 
-    static bool addressToIpv4Address(Ipv4::Address& dst, const Address& src) {
-        for(Natural8 i = 0; i < 10; ++i)
-            if(src.bytes[i] != 0x00)
-                return false;
+    static void ipv6ToIpv4(Ipv4::Address& dst, const Ipv6::Address& src) {
         for(Natural8 i = 0; i < 4; ++i)
             dst.bytes[i] = src.bytes[i+12];
-        return true;
     }
 
-    static bool addressFromMACAddress(Address& dst, const Mac::Address& src) {
+    static bool macToIpv6(Ipv6::Address& dst, const Mac::Address& src) {
         if(src.bytes[0] == 0x33 && src.bytes[1] == 0x33) { // Multicast Addresses
             dst.bytes[0] = 0xFF;
             for(Natural8 i = 1; i < 12; ++i)
@@ -296,7 +271,7 @@ struct Ipv6 {
         return false;
     }
 
-    static bool addressToMACAddress(Mac::Address& dst, const Address& src) {
+    static bool ipv6ToMac(Mac::Address& dst, const Ipv6::Address& src) {
         if(src.bytes[0] == 0xFF) { // Multicast Addresses
             dst.bytes[0] = 0x33;
             dst.bytes[1] = 0x33;
@@ -320,12 +295,22 @@ struct Ipv6 {
     }
 };
 
-union IpPacket {
-    Ipv4::Packet v4;
-    Ipv6::Packet v6;
-};
+struct Mac::Interface {
+    // Ipv4::Address ipv4LinkLocalAddress;
+    Ipv6::Address ipv6LinkLocalAddress;
+    // TODO: Tables
+    // Multicast Listener
+    // Neighbor Cache
+    // Destination Cache
+    // Default Router List
+    // Prefix List
+    // MTU (IPv6 Packet Total Length): minimum is 1280 Bytes
 
-union IpAddress {
-    Ipv4::Address v4;
-    Ipv6::Address v6;
+    virtual bool initialize() = 0;
+    virtual bool poll() = 0;
+    virtual Frame* createFrame(Natural16 payloadLength) = 0;
+    virtual bool transmit(Frame* frame) = 0;
+
+    virtual void setMACAddress(const Address& src) = 0;
+    virtual void getMACAddress(Address& dst) = 0;
 };

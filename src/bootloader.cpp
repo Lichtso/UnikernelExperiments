@@ -9,6 +9,9 @@ void puts(const char* str) {
 
 void main() {
     auto CCU = AllwinnerCCU::instances[0].address;
+    auto HSTimer = AllwinnerHSTimer::instances[0].address;
+    CCU->configureHSTimer();
+    HSTimer->initialize();
 
     auto UART = AllwinnerUART::instances[0].address;
     CCU->configureUART0();
@@ -24,11 +27,12 @@ void main() {
     CCU->configureDRAM();
     DRAM::initialize();
 
-    auto EMACDriver = reinterpret_cast<AllwinnerEMACDriver*>(DRAM::instances[0].address);
+    auto eth0 = new(DRAM::instances[0].address)AllwinnerEMACDriver;
     AXP803::configureDC1SW();
     CCU->configureEMAC();
-    EMACDriver->initialize();
+    eth0->initialize();
+    Icmpv6::NeighborAdvertisement::transmit(eth0);
 
     while(1)
-        EMACDriver->poll();
+        eth0->poll();
 }

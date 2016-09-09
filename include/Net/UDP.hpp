@@ -17,7 +17,7 @@ struct Udp {
         }
 
         void prepareTransmit(Ipv4::Packet* ipPacket, Natural16 payloadLength) {
-            totalLength = payloadLength+sizeof(*this);
+            totalLength = payloadLength+sizeof(Packet);
             ipPacket->protocol = protocolID;
             ipPacket->totalLength = totalLength;
             correctEndian();
@@ -26,7 +26,7 @@ struct Udp {
         }
 
         void prepareTransmit(Ipv6::Packet* ipPacket, Natural16 payloadLength) {
-            totalLength = payloadLength+sizeof(*this);
+            totalLength = payloadLength+sizeof(Packet);
             ipPacket->nextHeader = protocolID;
             ipPacket->payloadLength = totalLength;
             correctEndian();
@@ -35,10 +35,16 @@ struct Udp {
         }
     };
 
-    static void received(Mac::Frame* macFrame, IpPacket* ipPacket, Packet* udpPacket);
+    static void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv4::Packet* ipPacket, Packet* udpPacket);
+    static void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* udpPacket);
 };
 
-void Udp::received(Mac::Frame* macFrame, IpPacket* ipPacket, Packet* udpPacket) {
+void Udp::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv4::Packet* ipPacket, Packet* udpPacket) {
+    puts("UDP");
+    udpPacket->correctEndian();
+}
+
+void Udp::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* udpPacket) {
     puts("UDP");
     udpPacket->correctEndian();
 }

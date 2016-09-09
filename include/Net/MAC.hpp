@@ -29,14 +29,5 @@ struct Mac {
     };
     static_assert(sizeof(Frame) == 14);
 
-    void initialize();
-    void poll();
-    Frame* prepareTransmit(Natural16 payloadLength);
-    void transmit(Frame* frame);
-
-    void setMACAddress(const Address& src);
-    void getMACAddress(Address& dst);
-
-    void transmited(Natural32 errors, Natural32 length, Frame* frame);
-    void received(Natural32 errors, Natural32 length, Frame* frame);
+    struct Interface;
 };
