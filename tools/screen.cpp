@@ -5,8 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-
-int main() {
+int main(int argc, char** argv) {
     int fd = open("/dev/cu.usbserial-A900cccV", O_RDWR);
     if(fd < 0) {
         perror("open");

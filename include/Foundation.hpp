@@ -1,3 +1,14 @@
+static_assert(__LITTLE_ENDIAN__);
+
+template<bool B, typename T, typename F>
+struct conditional {
+    typedef F type;
+};
+template<typename T, typename F>
+struct conditional<true, T, F> {
+    typedef T type;
+};
+
 typedef char unsigned Natural8;
 typedef char Integer8;
 typedef short unsigned Natural16;
@@ -8,8 +19,16 @@ typedef float Float32;
 typedef long long unsigned Natural64;
 typedef long long int Integer64;
 typedef double Float64;
+// typedef unsigned __int128 Natural128;
+// typedef __int128 Integer128;
+// typedef long double Float128;
 
-static_assert(__LITTLE_ENDIAN__);
+const Natural8 architectureSize = sizeof(void*)*8;
+typedef conditional<architectureSize == 32, Natural32, Natural64>::type NativeNaturalType;
+typedef conditional<architectureSize == 32, Integer32, Integer64>::type NativeIntegerType;
+typedef conditional<architectureSize == 32, Float32, Float64>::type NativeFloatType;
+typedef NativeNaturalType PageRefType;
+typedef NativeNaturalType Symbol;
 
 template<typename DataType>
 constexpr static DataType swapedEndian(DataType value);
@@ -55,7 +74,6 @@ constexpr T max(T c, Args... args) {
 }
 
 extern "C" {
-    typedef Natural32 NativeNaturalType;
     NativeNaturalType strlen(const char* str) {
         const char* pos;
         for(pos = str; *pos; ++pos);
@@ -84,8 +102,17 @@ extern "C" {
     void __cxa_deleted_virtual() {}
 }
 
-inline void* operator new(unsigned int, void* ptr) noexcept {
+inline void* operator new(conditional<architectureSize == 32, unsigned, unsigned long>::type, void* ptr) noexcept {
     return ptr;
+}
+
+NativeNaturalType fromPointer(void* ptr) {
+    return reinterpret_cast<NativeNaturalType>(ptr);
+}
+
+template<typename Type>
+Type* toPointer(NativeNaturalType ptr) {
+    return reinterpret_cast<Type*>(ptr);
 }
 
 void puts(const char* str);

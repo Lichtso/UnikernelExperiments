@@ -20,8 +20,6 @@ struct IpChecksumGenerator {
     }
 };
 
-union IpPacket;
-
 struct Ipv4 {
     static constexpr Natural16 protocolID = 0x0800;
 
@@ -181,21 +179,22 @@ struct Ipv6 {
             swapEndian(payloadLength);
         }
 
-        void prepareTransmit(Mac::Frame* macFrame) {
-            macFrame->type = protocolID;
-            version = 6;
-            trafficClass = 0;
-            flowLabel = 0;
-            hopLimit = 255;
-            correctEndian();
-        }
+        void prepareTransmit(Mac::Frame* macFrame);
     };
     static_assert(sizeof(Packet) == 40);
 
     static void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Packet* packet);
 };
 
-struct IpAddress {
+union IpPacket {
+    Ipv4::Packet v4;
+    Ipv6::Packet v6;
+};
+
+union IpAddress {
+    Ipv4::Address v4;
+    Ipv6::Address v6;
+
     static bool macToIpv4(Ipv4::Address& dst, const Mac::Address& src) {
         if(src.bytes[0] == 0x01 && src.bytes[1] == 0x00 && src.bytes[2] == 0x5E && !(src.bytes[3]&0x80)) { // Multicast Addresses
             dst.bytes[0] = 224;
@@ -272,17 +271,19 @@ struct IpAddress {
     }
 
     static bool ipv6ToMac(Mac::Address& dst, const Ipv6::Address& src) {
-        if(src.bytes[0] == 0xFF) { // Multicast Addresses
+        if(src.bytes[0] == 0xFF && src.bytes[1] == 0x00) { // Multicast Addresses
             dst.bytes[0] = 0x33;
             dst.bytes[1] = 0x33;
             for(Natural8 i = 2; i < 6; ++i)
                 dst.bytes[i] = src.bytes[i+10];
             return true;
         }
-        if(src.bytes[0] == 0xFE && src.bytes[1] == 0x80 && src.bytes[11] == 0xFF && src.bytes[12] == 0xFE) { // EUI-64
+        if(src.bytes[0] == 0xFE && src.bytes[1] == 0x80) { // LinkLocal Address
             for(Natural8 i = 2; i < 8; ++i)
                 if(src.bytes[i] != 0x00)
                     return false;
+            if(src.bytes[11] != 0xFF || src.bytes[12] != 0xFE) // EUI-64
+                return false;
             dst.bytes[0] = src.bytes[8]^0x02;
             dst.bytes[1] = src.bytes[9];
             dst.bytes[2] = src.bytes[10];
@@ -294,6 +295,16 @@ struct IpAddress {
         return false;
     }
 };
+
+void Ipv6::Packet::prepareTransmit(Mac::Frame* macFrame) {
+    IpAddress::ipv6ToMac(macFrame->destinationAddress, destinationAddress);
+    macFrame->type = protocolID;
+    version = 6;
+    trafficClass = 0;
+    flowLabel = 0;
+    hopLimit = 255;
+    correctEndian();
+}
 
 struct Mac::Interface {
     // Ipv4::Address ipv4LinkLocalAddress;

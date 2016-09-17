@@ -1,4 +1,4 @@
-#include "../Hardware/AllwinnerA64.hpp"
+#include "../Clock.hpp"
 
 struct Mac {
     struct Address {

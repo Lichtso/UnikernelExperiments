@@ -7,13 +7,13 @@ struct AXP803 {
     } instances[];
 
     static void initialize() {
-        auto RSB = AllwinnerRSB::instances[0].address;
-        RSB->deviceAddress.hardwareAddress = instances[0].hardwareAddress;
-        RSB->deviceAddress.runTimeAddress = instances[0].runTimeAddress;
-        RSB->setRunTimeAddress();
+        auto rsb = AllwinnerRSB::instances[0].address;
+        rsb->deviceAddress.hardwareAddress = instances[0].hardwareAddress;
+        rsb->deviceAddress.runTimeAddress = instances[0].runTimeAddress;
+        rsb->setRunTimeAddress();
 
         Natural8 type;
-        if(!RSB->read(0x3, type))
+        if(!rsb->read(0x3, type))
             return;
         if(type != 0x51)
             puts("[FAIL] AXP803");
@@ -22,18 +22,18 @@ struct AXP803 {
     }
 
     static void configureDCDC5() {
-        auto RSB = AllwinnerRSB::instances[0].address;
+        auto rsb = AllwinnerRSB::instances[0].address;
 
         Natural8 value = 51; // 1500 mV
-        if(!RSB->write(0x24, value)) // DRAM_VCC (DCDC5)
+        if(!rsb->write(0x24, value)) // DRAM_VCC (DCDC5)
             return;
     }
 
     static void configureDC1SW() {
-        auto RSB = AllwinnerRSB::instances[0].address;
+        auto rsb = AllwinnerRSB::instances[0].address;
 
         Natural8 value = (1<<7); // DC1SW (Ethernet PHY)
-        if(!RSB->write(0x12, value)) // Output power on-off control 2
+        if(!rsb->write(0x12, value)) // Output power on-off control 2
             return;
     }
 };

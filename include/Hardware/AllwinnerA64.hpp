@@ -1,7 +1,7 @@
 #include "AllwinnerSMHC.hpp"
 
 const struct AllwinnerCPUCFG::Instance AllwinnerCPUCFG::instances[] = {
-    { reinterpret_cast<AllwinnerCPUCFG*>(0x01F01C00) }
+    { reinterpret_cast<AllwinnerCPUCFG*>(0x01700000) }
 };
 
 const struct AllwinnerSYSCTL::Instance AllwinnerSYSCTL::instances[] = {
@@ -67,6 +67,6 @@ const struct AXP803::Instance AXP803::instances[] = {
     { 0x3A3, 0x2D }
 };
 
-const struct DRAM::Instance DRAM::instances[] = {
-    { reinterpret_cast<DRAM*>(0x40000000) }
+const struct AllwinnerDRAM::Instance AllwinnerDRAM::instances[] = {
+    { reinterpret_cast<AllwinnerDRAM*>(0x40000000) }
 };

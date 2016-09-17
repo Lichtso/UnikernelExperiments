@@ -1,5 +1,10 @@
 #include "Ip.hpp"
 
+#define IcmpReceivedCase(PayloadType) \
+    case PayloadType::type: \
+        reinterpret_cast<PayloadType*>(icmpPacket->payload)->received(macInterface, macFrame, ipPacket, icmpPacket); \
+        break;
+
 struct Icmpv4 {
     static constexpr Natural8 protocolID = 1;
 
@@ -149,24 +154,23 @@ struct Icmpv6 {
             correctEndian();
         }
 
-        static bool transmit(Mac::Interface* macInterface, Ipv6::Packet* requestingIpPacket) {
-            auto macFrame = macInterface->createFrame(sizeof(Ipv6::Packet)+requestingIpPacket->payloadLength);
+        static bool transmit(Mac::Interface* macInterface, Ipv6::Packet* receivedIpPacket) {
+            auto macFrame = macInterface->createFrame(sizeof(Ipv6::Packet)+receivedIpPacket->payloadLength);
             if(!macFrame)
                 return false;
             auto ipPacket = reinterpret_cast<Ipv6::Packet*>(macFrame->payload);
             auto icmpPacket = reinterpret_cast<Packet*>(ipPacket->payload);
             auto echoReply = reinterpret_cast<EchoReply*>(icmpPacket->payload);
-            auto echoRequest = reinterpret_cast<EchoRequest*>(reinterpret_cast<Packet*>(requestingIpPacket->payload)->payload);
+            auto echoRequest = reinterpret_cast<EchoRequest*>(reinterpret_cast<Packet*>(receivedIpPacket->payload)->payload);
             echoReply->identifier = echoRequest->identifier;
             echoReply->sequenceNumber = echoRequest->sequenceNumber;
             echoReply->correctEndian();
-            ipPacket->destinationAddress = requestingIpPacket->sourceAddress;
+            ipPacket->destinationAddress = receivedIpPacket->sourceAddress;
             ipPacket->sourceAddress = macInterface->ipv6LinkLocalAddress;
             icmpPacket->type = type;
             icmpPacket->code = 0;
-            icmpPacket->prepareTransmit(ipPacket, requestingIpPacket->payloadLength-sizeof(Packet));
+            icmpPacket->prepareTransmit(ipPacket, receivedIpPacket->payloadLength-sizeof(Packet));
             ipPacket->prepareTransmit(macFrame);
-            IpAddress::ipv6ToMac(macFrame->destinationAddress, ipPacket->destinationAddress);
             macInterface->transmit(macFrame);
             return true;
         }
@@ -229,7 +233,7 @@ struct Icmpv6 {
             correctEndian();
         }
 
-        static bool transmit(Mac::Interface* macInterface, Ipv6::Packet* requestingIpPacket = nullptr) {
+        static bool transmit(Mac::Interface* macInterface, Ipv6::Packet* receivedIpPacket = nullptr) {
             auto macFrame = macInterface->createFrame(sizeof(Ipv6::Packet)+sizeof(Packet)+sizeof(NeighborAdvertisement)+8);
             if(!macFrame)
                 return false;
@@ -237,24 +241,23 @@ struct Icmpv6 {
             auto icmpPacket = reinterpret_cast<Packet*>(ipPacket->payload);
             auto neighborAdvertisement = reinterpret_cast<NeighborAdvertisement*>(icmpPacket->payload);
             neighborAdvertisement->routerFlag = 0;
-            neighborAdvertisement->solicitedFlag = (requestingIpPacket) ? 1 : 0;
+            neighborAdvertisement->solicitedFlag = (receivedIpPacket) ? 1 : 0;
             neighborAdvertisement->overrideFlag = 1;
             neighborAdvertisement->pad0 = 0;
             neighborAdvertisement->pad1 = 0;
-            neighborAdvertisement->targetAddress = (requestingIpPacket)
-                ? reinterpret_cast<NeighborSolicitation*>(reinterpret_cast<Packet*>(requestingIpPacket->payload)->payload)->targetAddress
+            neighborAdvertisement->targetAddress = (receivedIpPacket)
+                ? reinterpret_cast<NeighborSolicitation*>(reinterpret_cast<Packet*>(receivedIpPacket->payload)->payload)->targetAddress
                 : macInterface->ipv6LinkLocalAddress;
             neighborAdvertisement->options[0].type = Option::TargetLinkLayerAddress;
             neighborAdvertisement->options[0].chunks = 1;
             macInterface->getMACAddress(reinterpret_cast<Mac::Address&>(neighborAdvertisement->options[0].payload));
             neighborAdvertisement->correctEndian();
-            ipPacket->destinationAddress = (requestingIpPacket) ? requestingIpPacket->sourceAddress : Ipv6::localNetworkSegmentAllNodesMulticastAddress;
+            ipPacket->destinationAddress = (receivedIpPacket) ? receivedIpPacket->sourceAddress : Ipv6::localNetworkSegmentAllNodesMulticastAddress;
             ipPacket->sourceAddress = macInterface->ipv6LinkLocalAddress;
             icmpPacket->type = type;
             icmpPacket->code = 0;
             icmpPacket->prepareTransmit(ipPacket, sizeof(NeighborAdvertisement)+8);
             ipPacket->prepareTransmit(macFrame);
-            IpAddress::ipv6ToMac(macFrame->destinationAddress, ipPacket->destinationAddress);
             macInterface->transmit(macFrame);
             return true;
         }
@@ -292,11 +295,6 @@ struct Icmpv6 {
     static void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket);
 };
 
-#define IcmpReceivedCase(PayloadType) \
-    case PayloadType::type: \
-        reinterpret_cast<PayloadType*>(icmpPacket->payload)->received(macInterface, macFrame, ipPacket, icmpPacket); \
-        break;
-
 void Icmpv4::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv4::Packet* ipPacket, Icmpv4::Packet* icmpPacket) {
     puts("ICMPv4");
 }
@@ -304,7 +302,7 @@ void Icmpv4::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv4::
 void Icmpv6::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Icmpv6::Packet* icmpPacket) {
     puts("ICMPv6");
 
-    auto UART = AllwinnerUART::instances[0].address;
+    auto uart = AllwinnerUART::instances[0].address;
     switch(icmpPacket->type) {
         // IcmpReceivedCase(DestinationUnreachable)
         // IcmpReceivedCase(PacketTooBig)
@@ -317,7 +315,7 @@ void Icmpv6::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::
         // IcmpReceivedCase(NeighborAdvertisement)
         // IcmpReceivedCase(MulticastListenerReport)
         default:
-            UART->putHex(icmpPacket->type);
+            uart->putHex(icmpPacket->type);
             puts(" unknown type");
             break;
     }

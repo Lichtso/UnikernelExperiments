@@ -1,5 +1,6 @@
 SECTIONS {
     . = 0x00010014;
+    .entry : { *(.entry) }
     .text : { *(.text) }
     .rodata : { *(.rodata) }
     .data : { *(.data) }
@@ -7,5 +8,3 @@ SECTIONS {
     /DISCARD/ : { *(.ARM.exidx*) }
     /DISCARD/ : { *(.comment) }
 }
-
-ENTRY(entry)

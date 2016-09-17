@@ -5,6 +5,7 @@ struct AllwinnerHSTimer {
         volatile AllwinnerHSTimer* address;
         Natural8 interruptPort;
     } instances[];
+    static const Natural32 baseFrequency = 200000000;
 
     union {
         struct {
@@ -19,7 +20,7 @@ struct AllwinnerHSTimer {
             Natural32 enable : 1,
                       reload : 1,
                       pad0 : 2,
-                      preScale : 3, // Base Frequency: 200 MHz
+                      preScale : 3,
                       oneShot : 1,
                       pad1 : 23,
                       testMode : 1;
@@ -28,10 +29,6 @@ struct AllwinnerHSTimer {
     } control;
     Natural32 intervalValueLow, intervalValueHigh,
               currentValueLow, currentValueHigh;
-
-    void initialize() volatile {
-        load(0, false);
-    }
 
     void load(Natural64 value, bool oneShot) volatile {
         control.raw &= ~3;
@@ -46,12 +43,5 @@ struct AllwinnerHSTimer {
         Natural64 currentValue = currentValueLow;
         currentValue |= (static_cast<Natural64>(currentValueHigh)<<32);
         return currentValue;
-    }
-
-    void printUptime() volatile {
-        auto UART = AllwinnerUART::instances[0].address;
-        UART->puts("Uptime: ");
-        UART->putHex(-(getCurrentValue()|(0xFFULL<<56)));
-        UART->putc('\n');
     }
 };

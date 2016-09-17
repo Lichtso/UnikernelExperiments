@@ -1,4 +1,4 @@
-#include "DRAM.hpp"
+#include "AllwinnerDRAM.hpp"
 
 struct AllwinnerEMAC {
     static const struct Instance {
@@ -339,10 +339,10 @@ struct AllwinnerEMAC {
     void waitForLink() volatile {
         while(!link());
 
-        auto UART = AllwinnerUART::instances[0].address;
-        UART->puts("[ OK ] ");
+        auto uart = AllwinnerUART::instances[0].address;
+        uart->puts("[ OK ] ");
         const char* speedStrings[] = { "10 Mbps", "100 Mbps", "1 Gbps", "Unknown speed" };
-        UART->puts(speedStrings[MIIRead(0, 17)>>14]);
+        uart->puts(speedStrings[MIIRead(0, 17)>>14]);
         puts(" Ethernet link");
     }
 
