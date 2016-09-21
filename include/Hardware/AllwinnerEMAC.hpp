@@ -308,17 +308,17 @@ struct AllwinnerEMAC {
         transmitFlowControl.pauseFrameSlot = 0;
         transmitFlowControl.pauseFrameActive = 0;
 
-        receiveControl0.flowControlEnable = 0;
-        receiveControl0.unicastPauseFrameEnable = 0;
+        receiveControl0.flowControlEnable = 1;
+        receiveControl0.unicastPauseFrameEnable = 1;
         receiveControl0.checksumEnable = 0;
         receiveControl0.stripFCSOnShortFrames = 0;
         receiveControl0.jumboFrameEnable = 1;
         receiveControl0.truncateFramesDisable = 0;
         receiveControl1.flushFrameDisable = 0;
-        receiveControl1.DMAFIFOThresholdDisable = 1;
-        receiveControl1.forwardShortFrames = 0;
+        receiveControl1.DMAFIFOThresholdDisable = 0;
+        receiveControl1.forwardShortFrames = 1;
         receiveControl1.forwardErroredFrames = 0;
-        receiveControl1.DMAFIFOThresholdValue = 0;
+        receiveControl1.DMAFIFOThresholdValue = 1;
         receiveControl1.flowControlEnableThreshold = 0;
         receiveControl1.flowControlDisableThreshold = 0;
         receiveControl1.flowControlThresholdEnable = 0;

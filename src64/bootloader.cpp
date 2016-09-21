@@ -8,7 +8,6 @@ void puts(const char* str) {
 }
 
 void main() {
-
     auto ccu = AllwinnerCCU::instances[0].address;
     ccu->configureHSTimer();
     Clock::initialize();
@@ -31,10 +30,19 @@ void main() {
     AXP803::configureDC1SW();
     ccu->configureEMAC();
 
-    auto eth0 = new(dram)AllwinnerEMACDriver;
+    auto dramEnd = reinterpret_cast<NativeNaturalType>(dram)*3;
+    auto eth0 = new(reinterpret_cast<Natural8*>(dramEnd)-sizeof(AllwinnerEMACDriver))AllwinnerEMACDriver;
     eth0->initialize();
     Icmpv6::NeighborAdvertisement::transmit(eth0);
 
-    while(1)
+    Tcp::connection = new(reinterpret_cast<Natural8*>(eth0)-sizeof(Tcp::Connection))Tcp::Connection;
+    Tcp::connection->receiveBuffer = reinterpret_cast<Natural8*>(dram);
+    Tcp::connection->localPort = 1337;
+    Tcp::connection->listen();
+
+    while(1) {
+        Clock::update();
         eth0->poll();
+        Tcp::poll();
+    }
 }

@@ -152,7 +152,7 @@ struct AllwinnerCCU {
     void configureEMAC() volatile {
         auto pio = AllwinnerPIO::instances[0].address;
         pio->banks[3].configure[1].slot7 = 4; // PD15 : RGMII_TXD3  | MII_TXD3  | RMII_NULL
-        pio->banks[3].configure[1].slot6 = 7; // PD14 : RGMII_NULL  | MII_RXERR | RMII_RXER // Unnecessary
+        // pio->banks[3].configure[1].slot6 = 7; // PD14 : RGMII_NULL  | MII_RXERR | RMII_RXER
         pio->banks[3].configure[1].slot5 = 4; // PD13 : RGMII_RXCTL | MII_RXDV  | RMII_CRS_DV
         pio->banks[3].configure[1].slot4 = 4; // PD12 : RGMII_RXCK  | MII_RXCK  | RMII_NULL
         pio->banks[3].configure[1].slot3 = 4; // PD11 : RGMII_RXD0  | MII_RXD0  | RMII_RXD0
@@ -176,8 +176,8 @@ struct AllwinnerCCU {
         sysCtl->EMACClock.phyInterface = 1;
         sysCtl->EMACClock.invertTransmitClock = 0;
         sysCtl->EMACClock.invertReceiveClock = 0;
-        sysCtl->EMACClock.receiveClockDelayChain = 3;
-        sysCtl->EMACClock.transmitClockDelayChain = 0;
+        sysCtl->EMACClock.receiveClockDelayChain = 0;
+        sysCtl->EMACClock.transmitClockDelayChain = 1;
         sysCtl->EMACClock.RMIIEnable = 0;
     }
 

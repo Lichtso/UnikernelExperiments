@@ -1,31 +1,32 @@
 #include "Hardware/AllwinnerA64.hpp"
 
 struct Clock {
-    static Natural64 uptimeSeconds;
-    static Natural32 uptimeTicks, lastHsTicks;
+    static Natural64 uptimeCycles, uptimeTicks;
+    static const Natural64 cycleInSeconds = 60; // TODO: Far higher
 
     static void initialize() {
         auto hsTimer = AllwinnerHSTimer::instances[0].address;
-        hsTimer->load(AllwinnerHSTimer::baseFrequency, false);
+        hsTimer->load(cycleInSeconds*AllwinnerHSTimer::baseFrequency, false);
     }
 
     static void update() {
         auto hsTimer = AllwinnerHSTimer::instances[0].address;
-        Natural64 hsTicks = -(hsTimer->getCurrentValue()|(0xFFULL<<56));
-        if(hsTicks < lastHsTicks)
-            ++uptimeSeconds;
-        lastHsTicks = hsTicks;
+        Natural64 hsTicks = cycleInSeconds*AllwinnerHSTimer::baseFrequency-hsTimer->getCurrentValue();
+        if(hsTicks < uptimeTicks)
+            ++uptimeCycles;
+        uptimeTicks = hsTicks;
     }
 
     static Natural64 getUptimeScaledBy(Natural32 scale) {
-        Natural32 subSecondPart = uptimeTicks/(AllwinnerHSTimer::baseFrequency/scale);
-        return uptimeSeconds*scale+subSecondPart;
+        return uptimeCycles*cycleInSeconds*scale+uptimeTicks/(AllwinnerHSTimer::baseFrequency/scale);
     }
 
     static void printUptime() {
-        // TODO
+        update();
+        auto uart = AllwinnerUART::instances[0].address;
+        uart->putHex(getUptimeScaledBy(1000));
+        puts(" ms Uptime");
     }
 };
 
-Natural64 Clock::uptimeSeconds;
-Natural32 Clock::uptimeTicks, Clock::lastHsTicks;
+Natural64 Clock::uptimeCycles = 0, Clock::uptimeTicks = 0;

@@ -1,5 +1,5 @@
 SECTIONS {
-    . = 0x00010200;
+    . = 0x00010060;
     .entry : { *(.entry) }
     .text : { *(.text) }
     .rodata : { *(.rodata) }
