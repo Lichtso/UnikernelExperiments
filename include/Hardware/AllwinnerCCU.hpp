@@ -177,7 +177,7 @@ struct AllwinnerCCU {
         sysCtl->EMACClock.invertTransmitClock = 0;
         sysCtl->EMACClock.invertReceiveClock = 0;
         sysCtl->EMACClock.receiveClockDelayChain = 0;
-        sysCtl->EMACClock.transmitClockDelayChain = 1;
+        sysCtl->EMACClock.transmitClockDelayChain = 3;
         sysCtl->EMACClock.RMIIEnable = 0;
     }
 

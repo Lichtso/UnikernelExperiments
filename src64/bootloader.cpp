@@ -40,9 +40,11 @@ void main() {
     Tcp::connection->localPort = 1337;
     Tcp::connection->listen();
 
-    while(1) {
+    while(Tcp::connection->status != Tcp::Connection::Finished) {
         Clock::update();
         eth0->poll();
         Tcp::poll();
     }
+
+    puts("[ OK ] TCP download");
 }

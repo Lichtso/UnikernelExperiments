@@ -154,10 +154,10 @@ struct AllwinnerEMACDriver : public Mac::Interface {
         getMACAddress(frame->sourceAddress);
         frame->correctEndian();
 
-        auto uart = AllwinnerUART::instances[0].address;
-        for(Natural16 j = 0; j < 128; ++j)
+        /*auto uart = AllwinnerUART::instances[0].address;
+        for(Natural16 j = 0; j < 150; ++j)
             uart->putHex(reinterpret_cast<Natural8*>(frame)[j]);
-        puts(" frame");
+        puts(" frame");*/
 
         auto index = (fromPointer(frame)-2-fromPointer(transmitBuffers))/bufferSize;
         auto descriptor = &transmitDescriptorRing[index];
@@ -187,23 +187,21 @@ struct AllwinnerEMACDriver : public Mac::Interface {
     }
 
     void transmited(Natural32 errors, Natural32 length, Mac::Frame* frame) {
-        Clock::printUptime();
         auto uart = AllwinnerUART::instances[0].address;
         if(errors) {
+            Clock::printUptime();
             uart->putHex(errors);
-            puts(" transmit errors\n");
+            puts(" transmit error\n");
             return;
         }
-        uart->putHex(length);
-        puts(" transmit success\n");
     }
 
     void received(Natural32 errors, Natural32 length, Mac::Frame* frame) {
         Clock::printUptime();
         auto uart = AllwinnerUART::instances[0].address;
-        for(Natural16 j = 0; j < 1500; ++j)
+        /*for(Natural16 j = 0; j < 1500; ++j)
             uart->putHex(reinterpret_cast<Natural8*>(frame)[j]);
-        puts(" frame");
+        puts(" frame");*/
 
         frame->correctEndian();
 
@@ -212,7 +210,7 @@ struct AllwinnerEMACDriver : public Mac::Interface {
             puts(" receive error");
             return;
         }
-        uart->putHex(length);
+        uart->putDec(length);
         puts(" receive success");
 
         for(Natural16 j = 0; j < 6; ++j)
@@ -274,7 +272,7 @@ void Ipv4::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv4::Pa
         Ipv4ReceivedCase(Tcp)
         Ipv4ReceivedCase(Udp)
         default:
-            uart->putHex(ipPacket->protocol);
+            uart->putDec(ipPacket->protocol);
             puts(" unknown protocol");
             break;
     }
@@ -297,7 +295,7 @@ void Ipv6::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Pa
         Ipv6ReceivedCase(Tcp)
         Ipv6ReceivedCase(Udp)
         default:
-            uart->putHex(ipPacket->nextHeader);
+            uart->putDec(ipPacket->nextHeader);
             puts(" unknown protocol");
             break;
     }

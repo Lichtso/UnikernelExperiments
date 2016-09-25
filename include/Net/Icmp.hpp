@@ -315,7 +315,7 @@ void Icmpv6::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::
         // IcmpReceivedCase(NeighborAdvertisement)
         // IcmpReceivedCase(MulticastListenerReport)
         default:
-            uart->putHex(icmpPacket->type);
+            uart->putDec(icmpPacket->type);
             puts(" unknown type");
             break;
     }

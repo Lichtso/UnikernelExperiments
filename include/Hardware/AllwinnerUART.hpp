@@ -155,6 +155,32 @@ struct AllwinnerUART {
             putc((nibble < 0xA) ? nibble+'0' : nibble-0xA+'A');
         }
     }
+    template<typename Type>
+    void putDec(Type value) volatile {
+        const Type base = 10;
+        if(value == 0) {
+            putc('0');
+            return;
+        }
+        if(value < 0) {
+            putc('-');
+            value *= -1;
+        }
+        Type mask = 1;
+        while(mask <= value)
+            mask *= base;
+        while(mask > 0.001) {
+            if(mask == 1 && value > 0)
+                putc('.');
+            mask /= base;
+            if(mask == 0)
+                break;
+            Type digit = value/mask;
+            digit = static_cast<NativeIntegerType>(digit);
+            value -= digit*mask;
+            putc('0'+digit);
+        }
+    }
     void puts(const char* str) volatile {
         while(*str)
             putc(*str++);

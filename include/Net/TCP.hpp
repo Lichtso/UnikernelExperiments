@@ -101,7 +101,8 @@ struct Tcp {
             Established,
             FinSent,
             WaitingForRemoteToFinish,
-            TimedClose
+            TimedClose,
+            Finished
         } status = Closed;
 
         struct SelectiveAcknowledgmentBlock {
@@ -110,9 +111,6 @@ struct Tcp {
         // TODO: SACK Ring buffers
 
         bool transmit() {
-            auto uart = AllwinnerUART::instances[0].address;
-            uart->putHex(status);
-            puts(" TCP status");
             Natural8 optionsLength = (status == SynSent || status == SynReceived) ? 12 : 0;
             auto macFrame = macInterface->createFrame(sizeof(Ipv6::Packet)+sizeof(Packet)+optionsLength);
             if(!macFrame)
@@ -142,6 +140,11 @@ struct Tcp {
             if(status != SynSent) {
                 tcpPacket->acknowledgmentNumber = localAcknowledgment;
                 tcpPacket->acknowledgment = 1;
+
+                auto uart = AllwinnerUART::instances[0].address;
+                uart->putDec(localAcknowledgment-remoteInitialSequenceNumber+1);
+                puts(" localAcknowledgment");
+
                 /*if(selectiveAcknowledgmentEnabled) {
                     tcpPacket->options[0] = SelectiveAcknowledgement;
                     tcpPacket->options[1] = 0;
@@ -317,12 +320,6 @@ struct Tcp {
                 if(payloadLength > 0) {
                     Natural8* dst = receiveBuffer+receivedTcpPacket->sequenceNumber-remoteInitialSequenceNumber;
                     memcpy(dst, optionsEnd, payloadLength);
-
-                    auto uart = AllwinnerUART::instances[0].address;
-                    uart->putHex(reinterpret_cast<Natural64>(dst));
-                    puts(" memcpy dest");
-                    uart->putHex(payloadLength);
-                    puts(" payloadLength");
                 }
             }
 
@@ -341,7 +338,7 @@ struct Tcp {
                (status == Established && remoteAcknowledgment == localSequenceNumber))
                 return true;
             if(status == TimedClose) {
-                status = Closed;
+                status = Finished;
                 return true;
             }
             if(++retryCounter > 5) {
@@ -377,6 +374,7 @@ struct Tcp {
                     return false;
                 case Listen:
                 case SynSent:
+                case Finished:
                     status = Closed;
                     return true;
                 case SynReceived:

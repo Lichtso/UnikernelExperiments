@@ -24,7 +24,7 @@ struct Clock {
     static void printUptime() {
         update();
         auto uart = AllwinnerUART::instances[0].address;
-        uart->putHex(getUptimeScaledBy(1000));
+        uart->putDec(getUptimeScaledBy(1000));
         puts(" ms Uptime");
     }
 };
