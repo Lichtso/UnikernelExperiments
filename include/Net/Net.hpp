@@ -10,9 +10,10 @@ struct AllwinnerEMACDriver : public Mac::Interface {
     } transmitBuffers[transmitBufferCount], receiveBuffers[receiveBufferCount];
     struct AllwinnerEMAC::TransmitDescriptor *transmitedDescriptor, *transmitableDescriptor;
     struct AllwinnerEMAC::ReceiveDescriptor *receivedDescriptor;
-    bool linkStatus;
 
     bool initialize() {
+        Mac::Interface::initialize();
+
         auto EMAC = AllwinnerEMAC::instances[0].address;
         Clock::printUptime();
         EMAC->initialize();
@@ -150,22 +151,21 @@ struct AllwinnerEMACDriver : public Mac::Interface {
         return reinterpret_cast<Mac::Frame*>(descriptor->bufferAddress);
     }
 
-    bool transmit(Mac::Frame* frame) {
-        getMACAddress(frame->sourceAddress);
-        frame->correctEndian();
-
+    bool transmit(Mac::Frame* macFrame) {
         /*auto uart = AllwinnerUART::instances[0].address;
         for(Natural16 j = 0; j < 150; ++j)
-            uart->putHex(reinterpret_cast<Natural8*>(frame)[j]);
-        puts(" frame");*/
+            uart->putHex(reinterpret_cast<Natural8*>(macFrame)[j]);
+        puts(" macFrame");*/
 
-        auto index = (fromPointer(frame)-2-fromPointer(transmitBuffers))/bufferSize;
+        auto index = (fromPointer(macFrame)-2-fromPointer(transmitBuffers))/bufferSize;
         auto descriptor = &transmitDescriptorRing[index];
         descriptor->status.DMAOwnership = 1;
         auto EMAC = AllwinnerEMAC::instances[0].address;
         if(EMAC->transmitDMAStatus.status == AllwinnerEMAC::TransmitStopped ||
-           EMAC->transmitDMAStatus.status == AllwinnerEMAC::TransmitSuspended)
+           EMAC->transmitDMAStatus.status == AllwinnerEMAC::TransmitSuspended) {
+            // TODO: Sync DMA descriptor
             EMAC->enableTransmitter(true);
+        }
         return true;
     }
 
@@ -179,14 +179,7 @@ struct AllwinnerEMACDriver : public Mac::Interface {
         EMAC->getMACAddress(0, &dst);
     }
 
-    void linkStatusChanged() {
-        if(linkStatus)
-            puts("Lost connection");
-        else
-            puts("Acquired connection");
-    }
-
-    void transmited(Natural32 errors, Natural32 length, Mac::Frame* frame) {
+    void transmited(Natural32 errors, Natural32 length, Mac::Frame* macFrame) {
         auto uart = AllwinnerUART::instances[0].address;
         if(errors) {
             Clock::printUptime();
@@ -196,14 +189,14 @@ struct AllwinnerEMACDriver : public Mac::Interface {
         }
     }
 
-    void received(Natural32 errors, Natural32 length, Mac::Frame* frame) {
+    void received(Natural32 errors, Natural32 length, Mac::Frame* macFrame) {
         Clock::printUptime();
         auto uart = AllwinnerUART::instances[0].address;
         /*for(Natural16 j = 0; j < 1500; ++j)
-            uart->putHex(reinterpret_cast<Natural8*>(frame)[j]);
-        puts(" frame");*/
+            uart->putHex(reinterpret_cast<Natural8*>(macFrame)[j]);
+        puts(" macFrame");*/
 
-        frame->correctEndian();
+        macFrame->correctEndian();
 
         if(errors) {
             uart->putHex(errors);
@@ -214,21 +207,21 @@ struct AllwinnerEMACDriver : public Mac::Interface {
         puts(" receive success");
 
         for(Natural16 j = 0; j < 6; ++j)
-            uart->putHex(frame->destinationAddress.bytes[j]);
+            uart->putHex(macFrame->destinationAddress.bytes[j]);
         puts(" destination MAC");
         for(Natural16 j = 0; j < 6; ++j)
-            uart->putHex(frame->sourceAddress.bytes[j]);
+            uart->putHex(macFrame->sourceAddress.bytes[j]);
         puts(" source MAC");
 
-        switch(frame->type) {
+        switch(macFrame->type) {
             case Ipv4::protocolID:
-                Ipv4::received(this, frame, reinterpret_cast<Ipv4::Packet*>(frame->payload));
+                Ipv4::received(this, macFrame, reinterpret_cast<Ipv4::Packet*>(macFrame->payload));
                 break;
             case Ipv6::protocolID:
-                Ipv6::received(this, frame, reinterpret_cast<Ipv6::Packet*>(frame->payload));
+                Ipv6::received(this, macFrame, reinterpret_cast<Ipv6::Packet*>(macFrame->payload));
                 break;
             default:
-                uart->putHex(frame->type);
+                uart->putHex(macFrame->type);
                 puts(" unknown protocol");
                 break;
         }

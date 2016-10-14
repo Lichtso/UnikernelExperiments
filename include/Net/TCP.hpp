@@ -176,14 +176,14 @@ struct Tcp {
             switch(version) {
                 case 4:
                     tcpPacket->prepareTransmit(ipv4Packet, optionsLength, 0);
-                    ipv4Packet->prepareTransmit(macFrame);
+                    ipv4Packet->prepareTransmit();
                     break;
                 case 6:
                     tcpPacket->prepareTransmit(ipv6Packet, optionsLength, 0);
-                    ipv6Packet->prepareTransmit(macFrame);
+                    ipv6Packet->prepareTransmit();
                     break;
             }
-            macInterface->transmit(macFrame);
+            macInterface->transmitIpPacket(macFrame);
             Natural64 now = Clock::getUptimeScaledBy(timerPrecisionScale);
             retryTimer = now+timerPrecisionScale; // TODO: Timing
             return true;
@@ -399,8 +399,8 @@ struct Tcp {
         tcpPacket->destinationPort = receivedTcpPacket->sourcePort;
         tcpPacket->sourcePort = receivedTcpPacket->destinationPort;
         tcpPacket->prepareTransmit(ipPacket, 0, 0);
-        ipPacket->prepareTransmit(macFrame);
-        macInterface->transmit(macFrame);
+        ipPacket->prepareTransmit();
+        macInterface->transmitIpPacket(macFrame);
         return true;
     }
 

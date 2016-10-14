@@ -99,8 +99,7 @@ struct Ipv4 {
             swapEndian(swap0);
         }
 
-        void prepareTransmit(Mac::Frame* macFrame) {
-            macFrame->type = protocolID;
+        void prepareTransmit() {
             version = 4;
             internetHeaderLength = 5;
             typeOfService = 0;
@@ -179,7 +178,13 @@ struct Ipv6 {
             swapEndian(payloadLength);
         }
 
-        void prepareTransmit(Mac::Frame* macFrame);
+        void prepareTransmit() {
+            version = 6;
+            trafficClass = 0;
+            flowLabel = 0;
+            hopLimit = 255;
+            correctEndian();
+        }
     };
     static_assert(sizeof(Packet) == 40);
 
@@ -271,7 +276,8 @@ union IpAddress {
     }
 
     static bool ipv6ToMac(Mac::Address& dst, const Ipv6::Address& src) {
-        if(src.bytes[0] == 0xFF && src.bytes[1] == 0x00) { // Multicast Addresses
+        // TODO: Lookup addess scheme
+        if(src.bytes[0] == 0xFF && (src.bytes[1]&0xF0) == 0x00) { // Multicast Addresses
             dst.bytes[0] = 0x33;
             dst.bytes[1] = 0x33;
             for(Natural8 i = 2; i < 6; ++i)
@@ -296,32 +302,113 @@ union IpAddress {
     }
 };
 
-void Ipv6::Packet::prepareTransmit(Mac::Frame* macFrame) {
-    IpAddress::ipv6ToMac(macFrame->destinationAddress, destinationAddress);
-    macFrame->type = protocolID;
-    version = 6;
-    trafficClass = 0;
-    flowLabel = 0;
-    hopLimit = 255;
-    correctEndian();
-}
-
 struct Mac::Interface {
+    static const Natural8 neighborCacheEntryCount = 8;
     // Ipv4::Address ipv4LinkLocalAddress;
     Ipv6::Address ipv6LinkLocalAddress;
+    struct NeighborCacheEntry {
+        Ipv6::Address ipv6Address;
+        Mac::Address macAddress;
+        Natural16 usageCounter;
+    } neighborCache[8];
+    bool linkStatus, pad[7]; // TODO: Fix alignment issues
     // TODO: Tables
-    // Multicast Listener
-    // Neighbor Cache
+    // Multicast Listener (Report)
     // Destination Cache
     // Default Router List
     // Prefix List
     // MTU (IPv6 Packet Total Length): minimum is 1280 Bytes
 
-    virtual bool initialize() = 0;
+    virtual bool initialize() {
+        linkStatus = false;
+        invalidateNeighborCache();
+        return true;
+    }
     virtual bool poll() = 0;
     virtual Frame* createFrame(Natural16 payloadLength) = 0;
-    virtual bool transmit(Frame* frame) = 0;
+    virtual bool transmit(Mac::Frame* frame) = 0;
 
     virtual void setMACAddress(const Address& src) = 0;
     virtual void getMACAddress(Address& dst) = 0;
+
+    void invalidateNeighbor(NeighborCacheEntry* entry) {
+        entry->usageCounter = 0;
+        memset(&entry->ipv6Address, 0, sizeof(Ipv6::Address));
+        memset(&entry->macAddress, 0, sizeof(Mac::Address));
+    }
+
+    void invalidateNeighborCache() {
+        for(NativeNaturalType i = 0; i < neighborCacheEntryCount; ++i)
+            invalidateNeighbor(&neighborCache[i]);
+    }
+
+    NeighborCacheEntry* findNeighbor(const Ipv6::Address& ipv6Address) {
+        NeighborCacheEntry* entry = nullptr;
+        for(NativeNaturalType i = 0; i < neighborCacheEntryCount; ++i) {
+            // neighborCache[i].usageCounter *= 0.99; // TODO: Reduce usageCounter
+            if(neighborCache[i].usageCounter > 0 && neighborCache[i].ipv6Address == ipv6Address) {
+                ++neighborCache[i].usageCounter;
+                entry = &neighborCache[i];
+            }
+        }
+        return entry;
+    }
+
+    void addNeighbor(const Mac::Address& macAddress, const Ipv6::Address& ipv6Address) {
+        NeighborCacheEntry* entry = findNeighbor(ipv6Address);
+        if(entry) {
+            entry->macAddress = macAddress;
+            return;
+        }
+        entry = &neighborCache[0];
+        for(NativeNaturalType i = 1; i < neighborCacheEntryCount; ++i)
+            if(neighborCache[i].usageCounter < entry->usageCounter)
+                entry = &neighborCache[i];
+        entry->ipv6Address = ipv6Address;
+        entry->macAddress = macAddress;
+        entry->usageCounter = 1;
+    }
+
+    void prepareTransmit(Mac::Frame* macFrame) {
+        getMACAddress(macFrame->sourceAddress);
+        macFrame->correctEndian();
+    }
+
+    bool transmitIpPacket(Mac::Frame* macFrame) {
+        auto uart = AllwinnerUART::instances[0].address;
+        switch(macFrame->payload[0]>>4) {
+            case 4: {
+                // auto ipv4Packet = reinterpret_cast<Ipv4::Packet*>(macFrame->payload);
+                macFrame->type = Ipv4::protocolID;
+                // TODO
+            } return false;
+            case 6: {
+                auto ipv6Packet = reinterpret_cast<Ipv6::Packet*>(macFrame->payload);
+                macFrame->type = Ipv6::protocolID;
+                NeighborCacheEntry* entry = findNeighbor(ipv6Packet->destinationAddress);
+                if(entry)
+                    macFrame->destinationAddress = entry->macAddress;
+                else if(!IpAddress::ipv6ToMac(macFrame->destinationAddress, ipv6Packet->destinationAddress)) {
+                    for(Natural16 j = 0; j < 16; ++j)
+                        uart->putHex(ipv6Packet->destinationAddress.bytes[j]);
+                    puts(" Could not resolve mac address");
+                    return false;
+                }
+            } break;
+            default:
+                uart->putHex(macFrame->type);
+                puts(" unknown protocol");
+                return false;
+        }
+        prepareTransmit(macFrame);
+        return transmit(macFrame);
+    }
+
+    void linkStatusChanged() {
+        if(linkStatus) {
+            invalidateNeighborCache();
+            puts("Lost connection");
+        } else
+            puts("Acquired connection");
+    }
 };

@@ -170,8 +170,8 @@ struct Icmpv6 {
             icmpPacket->type = type;
             icmpPacket->code = 0;
             icmpPacket->prepareTransmit(ipPacket, receivedIpPacket->payloadLength-sizeof(Packet));
-            ipPacket->prepareTransmit(macFrame);
-            macInterface->transmit(macFrame);
+            ipPacket->prepareTransmit();
+            macInterface->transmitIpPacket(macFrame);
             return true;
         }
     };
@@ -212,6 +212,7 @@ struct Icmpv6 {
 
             if(targetAddress != macInterface->ipv6LinkLocalAddress)
                 return;
+            macInterface->addNeighbor(macFrame->sourceAddress, ipPacket->sourceAddress);
             NeighborAdvertisement::transmit(macInterface, ipPacket);
         }
     };
@@ -257,8 +258,8 @@ struct Icmpv6 {
             icmpPacket->type = type;
             icmpPacket->code = 0;
             icmpPacket->prepareTransmit(ipPacket, sizeof(NeighborAdvertisement)+8);
-            ipPacket->prepareTransmit(macFrame);
-            macInterface->transmit(macFrame);
+            ipPacket->prepareTransmit();
+            macInterface->transmitIpPacket(macFrame);
             return true;
         }
     };
