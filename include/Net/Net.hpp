@@ -1,5 +1,12 @@
 #include "Udp.hpp"
 
+void Mac::Interface::linkStatusChanged() {
+    if(linkStatus)
+        Icmpv6::NeighborAdvertisement::transmit(this);
+    else
+        invalidateNeighborCache();
+}
+
 struct AllwinnerEMACDriver : public Mac::Interface {
     static const Natural16 transmitBufferCount = 128, receiveBufferCount = 128, bufferSize = 1536;
 
@@ -17,10 +24,6 @@ struct AllwinnerEMACDriver : public Mac::Interface {
         auto EMAC = AllwinnerEMAC::instances[0].address;
         Clock::printUptime();
         EMAC->initialize();
-        Clock::printUptime();
-        EMAC->waitForLink();
-        linkStatus = true;
-        Clock::printUptime();
 
         Mac::Address macAddress = {{ 0x36, 0xC9, 0xE3, 0xF1, 0xB8, 0x05 }}; // 36:C9:E3:F1:B8:05
         setMACAddress(macAddress);
@@ -28,48 +31,58 @@ struct AllwinnerEMACDriver : public Mac::Interface {
 
         for(Natural8 i = 0; i < transmitBufferCount; ++i) {
             auto descriptor = &transmitDescriptorRing[i];
-            descriptor->bufferAddress = fromPointer(&transmitBuffers[i])+2;
-            descriptor->next = fromPointer(&transmitDescriptorRing[(i+1)%transmitBufferCount]);
             descriptor->status.raw = 0;
             descriptor->control.raw = 0;
             descriptor->control.bufferSize = 0;
             descriptor->control.chainMode = 1;
             descriptor->control.completionInterruptEnable = 1;
+            descriptor->bufferAddress = fromPointer(&transmitBuffers[i])+2;
+            descriptor->next = fromPointer(&transmitDescriptorRing[(i+1)%transmitBufferCount]);
         }
         for(Natural8 i = 0; i < receiveBufferCount; ++i) {
             auto descriptor = &receiveDescriptorRing[i];
-            descriptor->bufferAddress = fromPointer(&receiveBuffers[i])+2;
-            descriptor->next = fromPointer(&receiveDescriptorRing[(i+1)%receiveBufferCount]);
             descriptor->status.raw = 0;
             descriptor->status.DMAOwnership = 1;
             descriptor->control.raw = 0;
             descriptor->control.bufferSize = bufferSize;
             descriptor->control.chainMode = 1;
             descriptor->control.completionInterruptDisable = 0;
+            descriptor->bufferAddress = fromPointer(&receiveBuffers[i])+2;
+            descriptor->next = fromPointer(&receiveDescriptorRing[(i+1)%receiveBufferCount]);
         }
         transmitedDescriptor = transmitableDescriptor = &transmitDescriptorRing[0];
         receivedDescriptor = &receiveDescriptorRing[0];
         EMAC->transmitDMA = fromPointer(transmitableDescriptor);
         EMAC->receiveDMA = fromPointer(receivedDescriptor);
         EMAC->enableReceiver(true);
+        Clock::printUptime();
         return true;
     }
 
     bool poll() {
+        auto uart = AllwinnerUART::instances[0].address;
         auto EMAC = AllwinnerEMAC::instances[0].address;
         bool nextLinkStatus = EMAC->link();
-        if(linkStatus != nextLinkStatus)
+        if(linkStatus != nextLinkStatus) {
+            linkStatus = nextLinkStatus;
+            Clock::printUptime();
+            if(linkStatus) {
+                uart->puts("[ OK ] ");
+                uart->putDec(EMAC->linkSpeed());
+                puts(" Mbit/s ethernet link");
+            } else
+                puts("[FAIL] Lost ethernet link");
             linkStatusChanged();
-        linkStatus = nextLinkStatus;
-        Natural32 length = 0;
+        }
+        Natural32 length = 0, left = transmitBufferCount;
         AllwinnerEMAC::TransmitDescriptor* transmitPeekDescriptor = transmitedDescriptor;
         while(1) {
-            if(transmitPeekDescriptor->control.bufferSize == 0) { // Vacant Frame
+            if(transmitPeekDescriptor->status.DMAOwnership) // Pending Frame
+                break;
+            else if(transmitPeekDescriptor->control.bufferSize == 0) { // Vacant Frame
                 EMAC->enableTransmitter(false);
                 break;
             }
-            if(transmitPeekDescriptor->status.DMAOwnership) // Pending Frame
-                break;
             length += transmitPeekDescriptor->control.bufferSize;
             if(transmitPeekDescriptor->control.last) {
                 transmited(
@@ -84,6 +97,9 @@ struct AllwinnerEMACDriver : public Mac::Interface {
                     if(last)
                         break;
                 }
+                --left;
+                if(left == 0)
+                    break;
                 length = 0;
             }
             transmitPeekDescriptor = reinterpret_cast<AllwinnerEMAC::TransmitDescriptor*>(transmitPeekDescriptor->next);
@@ -91,8 +107,9 @@ struct AllwinnerEMACDriver : public Mac::Interface {
         if(EMAC->transmitDMAStatus.status == AllwinnerEMAC::TransmitSuspended)
             EMAC->enableTransmitter(false);
         length = 0;
+        left = receiveBufferCount/2;
         AllwinnerEMAC::ReceiveDescriptor* receivePeekDescriptor = receivedDescriptor;
-        while(1) { // TODO: Max count
+        while(1) {
             if(receivePeekDescriptor->status.DMAOwnership) // Vacant Frame
                 break;
             length += receivePeekDescriptor->control.bufferSize;
@@ -108,6 +125,9 @@ struct AllwinnerEMACDriver : public Mac::Interface {
                     if(last)
                         break;
                 }
+                --left;
+                if(left == 0)
+                    break;
                 length = 0;
             }
             receivePeekDescriptor = reinterpret_cast<AllwinnerEMAC::ReceiveDescriptor*>(receivePeekDescriptor->next);
@@ -152,6 +172,7 @@ struct AllwinnerEMACDriver : public Mac::Interface {
     }
 
     bool transmit(Mac::Frame* macFrame) {
+        auto EMAC = AllwinnerEMAC::instances[0].address;
         /*auto uart = AllwinnerUART::instances[0].address;
         for(Natural16 j = 0; j < 150; ++j)
             uart->putHex(reinterpret_cast<Natural8*>(macFrame)[j]);
@@ -160,12 +181,22 @@ struct AllwinnerEMACDriver : public Mac::Interface {
         auto index = (fromPointer(macFrame)-2-fromPointer(transmitBuffers))/bufferSize;
         auto descriptor = &transmitDescriptorRing[index];
         descriptor->status.DMAOwnership = 1;
-        auto EMAC = AllwinnerEMAC::instances[0].address;
+
+        /* TODO: Holes in the transmit queue
+        auto descriptorToClear = transmitedDescriptor;
+        while(descriptorToClear != descriptor) {
+            uart->putHex(reinterpret_cast<Natural64>(descriptorToClear));
+            puts(" descriptorToClear");
+            if(descriptorToClear->status.DMAOwnership == 0) {
+                descriptorToClear->control.bufferSize = 0;
+                descriptorToClear->status.raw = 0;
+                descriptorToClear->status.DMAOwnership = 1;
+            }
+            descriptorToClear = reinterpret_cast<AllwinnerEMAC::TransmitDescriptor*>(descriptorToClear->next);
+        }*/
         if(EMAC->transmitDMAStatus.status == AllwinnerEMAC::TransmitStopped ||
-           EMAC->transmitDMAStatus.status == AllwinnerEMAC::TransmitSuspended) {
-            // TODO: Sync DMA descriptor
+           EMAC->transmitDMAStatus.status == AllwinnerEMAC::TransmitSuspended)
             EMAC->enableTransmitter(true);
-        }
         return true;
     }
 
@@ -181,6 +212,10 @@ struct AllwinnerEMACDriver : public Mac::Interface {
 
     void transmited(Natural32 errors, Natural32 length, Mac::Frame* macFrame) {
         auto uart = AllwinnerUART::instances[0].address;
+        #ifdef NETWORK_DEBUG
+        uart->putHex(reinterpret_cast<Natural64>(transmitedDescriptor));
+        puts(" transmit success");
+        #endif
         if(errors) {
             Clock::printUptime();
             uart->putHex(errors);
@@ -190,29 +225,29 @@ struct AllwinnerEMACDriver : public Mac::Interface {
     }
 
     void received(Natural32 errors, Natural32 length, Mac::Frame* macFrame) {
-        Clock::printUptime();
         auto uart = AllwinnerUART::instances[0].address;
+        #ifdef NETWORK_DEBUG
+        Clock::printUptime();
+        uart->putDec(length);
+        puts(" receive success");
         /*for(Natural16 j = 0; j < 1500; ++j)
             uart->putHex(reinterpret_cast<Natural8*>(macFrame)[j]);
         puts(" macFrame");*/
-
-        macFrame->correctEndian();
-
-        if(errors) {
-            uart->putHex(errors);
-            puts(" receive error");
-            return;
-        }
-        uart->putDec(length);
-        puts(" receive success");
-
         for(Natural16 j = 0; j < 6; ++j)
             uart->putHex(macFrame->destinationAddress.bytes[j]);
         puts(" destination MAC");
         for(Natural16 j = 0; j < 6; ++j)
             uart->putHex(macFrame->sourceAddress.bytes[j]);
         puts(" source MAC");
+        #endif
 
+        if(errors) {
+            uart->putHex(errors);
+            puts(" receive error");
+            return;
+        }
+
+        macFrame->correctEndian();
         switch(macFrame->type) {
             case Ipv4::protocolID:
                 Ipv4::received(this, macFrame, reinterpret_cast<Ipv4::Packet*>(macFrame->payload));
@@ -221,11 +256,15 @@ struct AllwinnerEMACDriver : public Mac::Interface {
                 Ipv6::received(this, macFrame, reinterpret_cast<Ipv6::Packet*>(macFrame->payload));
                 break;
             default:
+                #ifdef NETWORK_DEBUG
                 uart->putHex(macFrame->type);
                 puts(" unknown protocol");
+                #endif
                 break;
         }
+        #ifdef NETWORK_DEBUG
         puts("");
+        #endif
     }
 };
 
@@ -244,52 +283,59 @@ struct AllwinnerEMACDriver : public Mac::Interface {
         break;
 
 void Ipv4::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv4::Packet* ipPacket) {
-    puts("IPv4");
-
+    #ifdef NETWORK_DEBUG
     auto uart = AllwinnerUART::instances[0].address;
-    if(ipPacket->headerChecksum() != 0) {
-        puts("Checksum error");
-        return;
-    }
-    ipPacket->correctEndian();
-
+    puts("IPv4");
     for(Natural16 j = 0; j < 4; ++j)
         uart->putHex(ipPacket->destinationAddress.bytes[j]);
     puts(" destination IP");
     for(Natural16 j = 0; j < 4; ++j)
         uart->putHex(ipPacket->sourceAddress.bytes[j]);
     puts(" source IP");
+    #endif
 
+    if(ipPacket->headerChecksum() != 0) {
+        #ifdef NETWORK_DEBUG
+        puts("Checksum error");
+        #endif
+        return;
+    }
+    ipPacket->correctEndian();
     switch(ipPacket->protocol) {
         Ipv4ReceivedCase(Icmpv4)
         Ipv4ReceivedCase(Tcp)
         Ipv4ReceivedCase(Udp)
         default:
+            #ifdef NETWORK_DEBUG
             uart->putDec(ipPacket->protocol);
             puts(" unknown protocol");
+            #endif
             break;
     }
 }
 
 void Ipv6::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket) {
-    puts("IPv6");
-    ipPacket->correctEndian();
-
+    #ifdef NETWORK_DEBUG
     auto uart = AllwinnerUART::instances[0].address;
+    puts("IPv6");
     for(Natural16 j = 0; j < 16; ++j)
         uart->putHex(ipPacket->destinationAddress.bytes[j]);
     puts(" destination IP");
     for(Natural16 j = 0; j < 16; ++j)
         uart->putHex(ipPacket->sourceAddress.bytes[j]);
     puts(" source IP");
+    #endif
 
+    ipPacket->correctEndian();
     switch(ipPacket->nextHeader) {
         Ipv6ReceivedCase(Icmpv6)
         Ipv6ReceivedCase(Tcp)
         Ipv6ReceivedCase(Udp)
         default:
+            #ifdef NETWORK_DEBUG
             uart->putDec(ipPacket->nextHeader);
             puts(" unknown protocol");
+            #endif
             break;
     }
 }

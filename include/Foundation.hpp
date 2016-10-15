@@ -102,7 +102,7 @@ extern "C" {
     void __cxa_deleted_virtual() {}
 }
 
-inline void* operator new(conditional<architectureSize == 32, unsigned, unsigned long>::type, void* ptr) noexcept {
+inline void* operator new(__SIZE_TYPE__, void* ptr) noexcept {
     return ptr;
 }
 

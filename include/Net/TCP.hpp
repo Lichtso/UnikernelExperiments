@@ -141,10 +141,6 @@ struct Tcp {
                 tcpPacket->acknowledgmentNumber = localAcknowledgment;
                 tcpPacket->acknowledgment = 1;
 
-                auto uart = AllwinnerUART::instances[0].address;
-                uart->putDec(localAcknowledgment-remoteInitialSequenceNumber+1);
-                puts(" localAcknowledgment");
-
                 /*if(selectiveAcknowledgmentEnabled) {
                     tcpPacket->options[0] = SelectiveAcknowledgement;
                     tcpPacket->options[1] = 0;
@@ -409,12 +405,16 @@ struct Tcp {
     }
 
     static void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv4::Packet* ipPacket, Tcp::Packet* tcpPacket) {
+        #ifdef NETWORK_DEBUG
         puts("TCP");
+        #endif
         tcpPacket->correctEndian();
     }
 
     static void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Tcp::Packet* tcpPacket) {
+        #ifdef NETWORK_DEBUG
         puts("TCP");
+        #endif
         tcpPacket->correctEndian();
 
         // Only one connection, which writes directly to receiveBuffer and closes after the remote finishes

@@ -33,7 +33,6 @@ void main() {
     auto dramEnd = reinterpret_cast<NativeNaturalType>(dram)*3;
     auto eth0 = new(reinterpret_cast<Natural8*>(dramEnd)-sizeof(AllwinnerEMACDriver))AllwinnerEMACDriver;
     eth0->initialize();
-    Icmpv6::NeighborAdvertisement::transmit(eth0);
 
     Tcp::connection = new(reinterpret_cast<Natural8*>(eth0)-sizeof(Tcp::Connection))Tcp::Connection;
     Tcp::connection->receiveBuffer = reinterpret_cast<Natural8*>(dram);

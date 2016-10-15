@@ -67,7 +67,9 @@ struct Icmpv6 {
         void correctEndian() { }
 
         void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+            #ifdef NETWORK_DEBUG
             puts("DestinationUnreachable");
+            #endif
             correctEndian();
         }
     };
@@ -81,7 +83,9 @@ struct Icmpv6 {
         }
 
         void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+            #ifdef NETWORK_DEBUG
             puts("PacketTooBig");
+            #endif
             correctEndian();
         }
     };
@@ -97,7 +101,9 @@ struct Icmpv6 {
         void correctEndian() { }
 
         void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+            #ifdef NETWORK_DEBUG
             puts("TimeExceeded");
+            #endif
             correctEndian();
         }
     };
@@ -116,7 +122,9 @@ struct Icmpv6 {
         }
 
         void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+            #ifdef NETWORK_DEBUG
             puts("ParameterProblem");
+            #endif
             correctEndian();
         }
     };
@@ -132,7 +140,9 @@ struct Icmpv6 {
         }
 
         void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+            #ifdef NETWORK_DEBUG
             puts("EchoRequest");
+            #endif
             correctEndian();
 
             EchoReply::transmit(macInterface, ipPacket);
@@ -150,7 +160,9 @@ struct Icmpv6 {
         }
 
         void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+            #ifdef NETWORK_DEBUG
             puts("EchoReply");
+            #endif
             correctEndian();
         }
 
@@ -193,7 +205,9 @@ struct Icmpv6 {
         }
 
         void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+            #ifdef NETWORK_DEBUG
             puts("MulticastListenerQuery");
+            #endif
             correctEndian();
         }
     };
@@ -207,7 +221,9 @@ struct Icmpv6 {
         void correctEndian() { }
 
         void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+            #ifdef NETWORK_DEBUG
             puts("NeighborSolicitation");
+            #endif
             correctEndian();
 
             if(targetAddress != macInterface->ipv6LinkLocalAddress)
@@ -230,7 +246,9 @@ struct Icmpv6 {
         void correctEndian() { }
 
         void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+            #ifdef NETWORK_DEBUG
             puts("NeighborAdvertisement");
+            #endif
             correctEndian();
         }
 
@@ -288,7 +306,9 @@ struct Icmpv6 {
         }
 
         void received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Packet* icmpPacket) {
+            #ifdef NETWORK_DEBUG
             puts("MulticastListenerReport");
+            #endif
             correctEndian();
         }
     };
@@ -297,13 +317,17 @@ struct Icmpv6 {
 };
 
 void Icmpv4::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv4::Packet* ipPacket, Icmpv4::Packet* icmpPacket) {
+    #ifdef NETWORK_DEBUG
     puts("ICMPv4");
+    #endif
 }
 
 void Icmpv6::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::Packet* ipPacket, Icmpv6::Packet* icmpPacket) {
-    puts("ICMPv6");
-
+    #ifdef NETWORK_DEBUG
     auto uart = AllwinnerUART::instances[0].address;
+    puts("ICMPv6");
+    #endif
+
     switch(icmpPacket->type) {
         // IcmpReceivedCase(DestinationUnreachable)
         // IcmpReceivedCase(PacketTooBig)
@@ -316,8 +340,10 @@ void Icmpv6::received(Mac::Interface* macInterface, Mac::Frame* macFrame, Ipv6::
         // IcmpReceivedCase(NeighborAdvertisement)
         // IcmpReceivedCase(MulticastListenerReport)
         default:
+            #ifdef NETWORK_DEBUG
             uart->putDec(icmpPacket->type);
             puts(" unknown type");
+            #endif
             break;
     }
 }

@@ -336,16 +336,6 @@ struct AllwinnerEMAC {
         receiveFrameFilter.addressFilterDisable = 0;
     }
 
-    void waitForLink() volatile {
-        while(!link());
-
-        auto uart = AllwinnerUART::instances[0].address;
-        uart->puts("[ OK ] ");
-        const char* speedStrings[] = { "10 Mbps", "100 Mbps", "1 Gbps", "Unknown speed" };
-        uart->puts(speedStrings[MIIRead(0, 17)>>14]);
-        puts(" Ethernet link");
-    }
-
     Natural16 MIIRead(Natural8 deviceAddress, Natural8 registerAddress) volatile {
         MIICommandRegister.deviceAddress = deviceAddress;
         MIICommandRegister.registerAddress = registerAddress;
@@ -378,6 +368,11 @@ struct AllwinnerEMAC {
 
     bool link() volatile {
         return MIIRead(0, 17)&(1<<10);
+    }
+
+    Natural32 linkSpeed() volatile {
+        Natural32 speeds[] = { 10, 100, 1000, 0 };
+        return speeds[MIIRead(0, 17)>>14];
     }
 
     void setMACAddress(Natural8 index, const void* buffer) volatile {

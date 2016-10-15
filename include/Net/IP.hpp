@@ -311,7 +311,7 @@ struct Mac::Interface {
         Mac::Address macAddress;
         Natural16 usageCounter;
     } neighborCache[8];
-    bool linkStatus, pad[7]; // TODO: Fix alignment issues
+    bool linkStatus;
     // TODO: Tables
     // Multicast Listener (Report)
     // Destination Cache
@@ -321,7 +321,7 @@ struct Mac::Interface {
 
     virtual bool initialize() {
         linkStatus = false;
-        invalidateNeighborCache();
+        linkStatusChanged();
         return true;
     }
     virtual bool poll() = 0;
@@ -404,11 +404,5 @@ struct Mac::Interface {
         return transmit(macFrame);
     }
 
-    void linkStatusChanged() {
-        if(linkStatus) {
-            invalidateNeighborCache();
-            puts("Lost connection");
-        } else
-            puts("Acquired connection");
-    }
+    void linkStatusChanged();
 };
