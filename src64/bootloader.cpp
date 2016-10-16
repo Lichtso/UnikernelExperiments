@@ -33,6 +33,7 @@ void main() {
     auto dramEnd = reinterpret_cast<NativeNaturalType>(dram)*3;
     auto eth0 = new(reinterpret_cast<Natural8*>(dramEnd)-sizeof(AllwinnerEMACDriver))AllwinnerEMACDriver;
     eth0->initialize();
+    eth0->setMACAddress({{ 0x36, 0xC9, 0xE3, 0xF1, 0xB8, 0x05 }}); // 36:C9:E3:F1:B8:05
 
     Tcp::connection = new(reinterpret_cast<Natural8*>(eth0)-sizeof(Tcp::Connection))Tcp::Connection;
     Tcp::connection->receiveBuffer = reinterpret_cast<Natural8*>(dram);

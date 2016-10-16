@@ -2,7 +2,7 @@
 TCP/IPv6-enabled [Pine64+](https://www.pine64.org/?product=pine-a64-board-2gb) bootloader
 
 This project provides you with the toolchain and resources needed to start developing your own unikernel.
-It is completely written from scratch and is thus still well structured without any old legacy code.
+It is completely written from scratch and is thus still well structured without legacy code.
 
 
 ## Getting started
@@ -15,14 +15,21 @@ You will need:
 - RJ45-cable for data transfer, Micro-USB-cable for power supply, UART for debugging (optional)
 - Mirco-SD-card to store the bootloader
 
-Execute make in the root of this repository and then dd build/bootloader.bin to your Mirco-SD-card.
+```bash
+make
+dd if=build/bootloader.bin of=/dev/[Mirco-SD-Card]
+tools/screen /dev/[UART-USB]
+ping6 FE80::34C9:E3FF:FEF1:B805%en3
+nc FE80::34C9:E3FF:FEF1:B805%en3 1337 < [Your-Binary].bin
+```
 
 
 ## Example Use Cases
 
 - (Self)-Education: Learn or teach how low level software works
 - Experimental development: Develop your own unikernel easily
-- Internet of Things:
+- Internet of Things: Leave behind all the bloatware
+- Security: Less code -> less breaches
 
 
 ## Status and Features

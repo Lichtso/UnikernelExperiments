@@ -25,10 +25,6 @@ struct AllwinnerEMACDriver : public Mac::Interface {
         Clock::printUptime();
         EMAC->initialize();
 
-        Mac::Address macAddress = {{ 0x36, 0xC9, 0xE3, 0xF1, 0xB8, 0x05 }}; // 36:C9:E3:F1:B8:05
-        setMACAddress(macAddress);
-        IpAddress::macToIpv6(ipv6LinkLocalAddress, macAddress);
-
         for(Natural8 i = 0; i < transmitBufferCount; ++i) {
             auto descriptor = &transmitDescriptorRing[i];
             descriptor->status.raw = 0;
@@ -203,6 +199,7 @@ struct AllwinnerEMACDriver : public Mac::Interface {
     void setMACAddress(const Mac::Address& src) {
         auto EMAC = AllwinnerEMAC::instances[0].address;
         EMAC->setMACAddress(0, &src);
+        IpAddress::macToIpv6(ipv6LinkLocalAddress, src);
     }
 
     void getMACAddress(Mac::Address& dst) {

@@ -1,9 +1,9 @@
 HPP_SRC := $(wildcard include/*.hpp) $(wildcard include/Hardware/*.hpp) $(wildcard include/Net/*.hpp)
 LINK = $(LLVM_BIN)lld -flavor gnu -s -Linclude --script
 ANALYZE = $(LLVM_BIN)llvm-objdump -print-imm-hex -d -s -t -triple
-COMPILER = $(LLVM_BIN)clang-3.9
+COMPILER = $(LLVM_BIN)clang
 COMPILE = $(COMPILER) -O1 -Iinclude -c -mlittle-endian -Wall -Wsign-compare -target
-COMPILE_CPP = -fno-exceptions -fno-unwind-tables -fno-stack-protector -fno-rtti -ffreestanding -std=c++1z
+COMPILE_CPP = -fno-exceptions -fno-unwind-tables -fno-stack-protector -fno-rtti -ffreestanding -mno-unaligned-access -std=c++1z
 TARGET_32 = armv7a-none-eabi
 TARGET_64 = arm64
 
@@ -28,9 +28,10 @@ build/bootloader32.elf : src32/bootloader.lds build/entry32.o
 build/bootloader64.elf : src64/bootloader.lds build/bootloader.o build/entry64.o
 	$(LINK) $< -o $@ build/bootloader.o build/entry64.o
 
-analyze: build/bootloader32.elf build/bootloader64.elf
+analyze: build/bootloader32.elf build/bootloader64.elf build/bootloader.o
 	$(ANALYZE) $(TARGET_32) build/bootloader32.elf
 	$(ANALYZE) $(TARGET_64) build/bootloader64.elf
+	$(ANALYZE) $(TARGET_64) build/bootloader.o
 
 tools/ImageBuilder: tools/ImageBuilder.cpp
 	$(COMPILER) -Itools -o $@ $<
