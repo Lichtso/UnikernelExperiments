@@ -11,15 +11,10 @@ _start:
 
     // Write CPU0 AArch64 reset address
     ldr r1, =0x017000A0
-    ldr r0, =0x00010060
+    ldr r0, =0x00010050
     str r0, [r1]
-    dsb
-    isb
 
     // Request warm reset to AArch64
     mov r0, #3
     mcr p15, 0, r0, c12, c0, 2
-    isb
-loop:
     wfi
-    b loop

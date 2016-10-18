@@ -9,18 +9,20 @@ It is completely written from scratch and is thus still well structured without 
 
 You will need:
 - Make
-- LLVM 3.9: [Clang](http://clang.llvm.org/get_started.html), [LLD](http://lld.llvm.org), llvm-objdump (optional)
+- LLVM 3.9 or higher: [Clang](http://clang.llvm.org/get_started.html), [LLD](http://lld.llvm.org), llvm-objdump (optional)
 - [Elfio](http://elfio.sourceforge.net)
 - Pine64+ with 2GB (other versions are untested)
-- RJ45-cable for data transfer, Micro-USB-cable for power supply, UART for debugging (optional)
 - Mirco-SD-card to store the bootloader
+- Micro-USB-cable for power supply
+- RJ45-cable for data transfer
+- UART for debugging (optional)
 
 ```bash
 make
 dd if=build/bootloader.bin of=/dev/[Mirco-SD-Card]
 tools/screen /dev/[UART-USB]
-ping6 FE80::34C9:E3FF:FEF1:B805%en3
-nc FE80::34C9:E3FF:FEF1:B805%en3 1337 < [Your-Binary].bin
+ping6 FE80::34C9:E3FF:FEF1:B805%[Interface]
+nc FE80::34C9:E3FF:FEF1:B805%[Interface] 1337 < [Your-Binary].bin
 ```
 
 
@@ -70,17 +72,16 @@ The firmware comes with a USB-OTG boot option but:
 
 ## References
 
-- https://sourceware.org/binutils/docs/ld/Scripts.html
-- https://sourceware.org/binutils/docs/as/ARM-Directives.html
-- http://www.heyrick.co.uk/armwiki/The_Status_register
-- http://downloads.ti.com/docs/esd/SPNU118N/Content/SPNU118N_HTML/assembler_directives.html
-
 ### Wiki
 - http://linux-sunxi.org/Arm64
 - http://linux-sunxi.org/Pine64
 - http://linux-sunxi.org/BROM
 - http://linux-sunxi.org/FEL/USBBoot
 - http://linux-sunxi.org/Reduced_Serial_Bus
+- https://sourceware.org/binutils/docs/ld/Scripts.html
+- https://sourceware.org/binutils/docs/as/ARM-Directives.html
+- http://www.heyrick.co.uk/armwiki/The_Status_register
+- http://downloads.ti.com/docs/esd/SPNU118N/Content/SPNU118N_HTML/assembler_directives.html
 
 ### Tutorials
 - https://balau82.wordpress.com/2010/04/12/booting-linux-with-u-boot-on-qemu-arm/
