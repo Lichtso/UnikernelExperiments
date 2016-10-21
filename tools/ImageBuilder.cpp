@@ -3,18 +3,18 @@
 #include <sys/types.h>
 #include <elfio/elfio.hpp>
 
-struct BootFileHead {
+struct BootFileHeader {
     unsigned int jumpInstruction;
     unsigned char magic[8];
     unsigned int checkSum, payloadLength;
 };
 const unsigned int
-    headerLength = sizeof(struct BootFileHead),
+    headerLength = sizeof(struct BootFileHeader),
     blockSize = 512;
 
 int output;
 unsigned int buffer, virtualOffset, physicalOffset;
-struct BootFileHead header = {
+struct BootFileHeader header = {
     0xEA000000|((headerLength-8)/4),
     {'e', 'G', 'O', 'N', '.', 'B', 'T', '0'},
     0x5F0A6C39,
@@ -61,7 +61,7 @@ int main(int argc, char** argv) {
 
                 std::cout << "\t"
                           << psec->get_name()
-                          << std::hex
+                          << std::hex << std::uppercase
                           << "\t0x" << psec->get_address()
                           << "\t0x" << address
                           << "\t0x" << (address+psec->get_size())
@@ -104,7 +104,7 @@ int main(int argc, char** argv) {
     }
 
     close(output);
-    std::cout << "Check sum: " << std::hex << __builtin_bswap32(header.checkSum) << std::endl;
+    std::cout << "Check sum: " << std::hex << std::uppercase << __builtin_bswap32(header.checkSum) << std::endl;
 
     return 0;
 }
