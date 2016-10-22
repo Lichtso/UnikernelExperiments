@@ -21,16 +21,21 @@ build/%.o : src64/%.cpp $(HPP_SRC)
 build/bootloader.bin: tools/ImageBuilder build/bootloader32.elf build/bootloader64.elf
 	$< $@ 0x10000 0x2000 build/bootloader32.elf build/bootloader64.elf
 
+build/kernel.bin: tools/ImageBuilder build/kernel.elf
+	$< $@ 0x40000000 0x0 build/kernel.elf
+
 build/bootloader32.elf : src32/bootloader.lds build/entry32.o
 	$(LINK) $< -o $@ build/entry32.o
 
 build/bootloader64.elf : src64/bootloader.lds build/bootloader.o build/entry64.o
 	$(LINK) $< -o $@ build/bootloader.o build/entry64.o
 
-analyze: build/bootloader32.elf build/bootloader64.elf build/bootloader.o
-	$(ANALYZE) $(TARGET_32) build/bootloader32.elf
-	$(ANALYZE) $(TARGET_64) build/bootloader64.elf
-	$(ANALYZE) $(TARGET_64) build/bootloader.o
+build/kernel.elf : src64/kernel.lds build/kernel.o
+	$(LINK) $< -o $@ build/kernel.o
+
+analyze: build/entry32.o build/entry64.o build/bootloader.o build/kernel.o
+	$(ANALYZE) $(TARGET_32) build/entry32.o
+	$(ANALYZE) $(TARGET_64) build/entry64.o build/bootloader.o build/kernel.elf
 
 tools/ImageBuilder: tools/ImageBuilder.cpp
 	clang++ -Itools -o $@ $<

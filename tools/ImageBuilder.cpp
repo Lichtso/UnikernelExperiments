@@ -4,22 +4,33 @@
 #include <elfio/elfio.hpp>
 
 struct BootFileHeader {
+    const static unsigned char magicSeed[8];
+    const static unsigned int  checkSumSeed = 0x5F0A6C39,
+                               blockSize = 512;
+
     unsigned int jumpInstruction;
     unsigned char magic[8];
     unsigned int checkSum, payloadLength;
+    void initialize(unsigned char architectureSize) {
+        checkSum = checkSumSeed;
+        payloadLength = sizeof(struct BootFileHeader);
+        memcpy(magic, magicSeed, sizeof(magicSeed));
+        switch(architectureSize) {
+            case 32:
+                jumpInstruction = 0xEA000000|((payloadLength-8)/4);
+                break;
+            case 64:
+                jumpInstruction = 0x14000000|(payloadLength/4);
+                break;
+        }
+    }
 };
-const unsigned int
-    headerLength = sizeof(struct BootFileHeader),
-    blockSize = 512;
+
+const unsigned char BootFileHeader::magicSeed[8] = {'e', 'G', 'O', 'N', '.', 'B', 'T', '0'};
 
 int output;
 unsigned int buffer, virtualOffset, physicalOffset;
-struct BootFileHeader header = {
-    0xEA000000|((headerLength-8)/4),
-    {'e', 'G', 'O', 'N', '.', 'B', 'T', '0'},
-    0x5F0A6C39,
-    headerLength
-};
+struct BootFileHeader header;
 
 int main(int argc, char** argv) {
     if(argc != 2 && argc < 5) {
@@ -48,11 +59,14 @@ int main(int argc, char** argv) {
                 std::cout << argv[i] << " is not little endian" << std::endl;
                 return 3;
             }
-            std::cout << argv[i] << " " << ((reader.get_class() == ELFCLASS64) ? 64 : 32) << "bit" << std::endl;
+            unsigned int architectureSize = (reader.get_class() == ELFCLASS64) ? 64 : 32;
+            if(i == 4)
+                header.initialize(architectureSize);
+            std::cout << argv[i] << " " << architectureSize << "bit" << std::endl;
             for(unsigned int i = 0; i < reader.sections.size(); ++i) {
                 ELFIO::section* psec = reader.sections[i];
                 int address = psec->get_address()-virtualOffset;
-                if(psec->get_type() != SHT_PROGBITS || address < (int)headerLength)
+                if(psec->get_type() != SHT_PROGBITS || address < static_cast<int>(sizeof(struct BootFileHeader)))
                     continue;
 
                 if(header.payloadLength < address+psec->get_size())
@@ -79,13 +93,13 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "Length: " << std::dec << header.payloadLength << " bytes" << std::endl;
-    header.payloadLength = (header.payloadLength+blockSize-1)/blockSize;
-    std::cout << blockSize << " byte blocks: " << std::dec << header.payloadLength << std::endl;
-    header.payloadLength *= blockSize;
+    header.payloadLength = (header.payloadLength+BootFileHeader::blockSize-1)/BootFileHeader::blockSize;
+    std::cout << BootFileHeader::blockSize << " byte blocks: " << std::dec << header.payloadLength << std::endl;
+    header.payloadLength *= BootFileHeader::blockSize;
 
     if(!checksumOnly) {
         lseek(output, physicalOffset, SEEK_SET);
-        write(output, (char*)&header, headerLength);
+        write(output, (char*)&header, sizeof(struct BootFileHeader));
         ftruncate(output, physicalOffset+header.payloadLength);
     }
 
@@ -94,7 +108,7 @@ int main(int argc, char** argv) {
     for(unsigned int i = 0; i < header.payloadLength/4; ++i) {
         read(output, (char*)&buffer, 4);
         if(checksumOnly && i == 3)
-            buffer = 0x5F0A6C39;
+            buffer = BootFileHeader::checkSumSeed;
         header.checkSum += buffer;
     }
 

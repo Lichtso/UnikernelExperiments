@@ -22,13 +22,6 @@ struct BootFileHeader {
     }
 };
 
-void puts(const char* str) {
-    auto uart = AllwinnerUART::instances[0].address;
-    uart->puts(str);
-    uart->putc('\r');
-    uart->putc('\n');
-}
-
 void main() {
     auto ccu = AllwinnerCCU::instances[0].address;
     ccu->configureHSTimer();
@@ -47,12 +40,12 @@ void main() {
     ccu->configurePLL();
     ccu->configureDRAM();
     auto dram = AllwinnerDRAM::instances[0].address;
+    auto dramEnd = reinterpret_cast<NativeNaturalType>(dram)*3;
     dram->initialize();
 
     AXP803::configureDC1SW();
     ccu->configureEMAC();
 
-    auto dramEnd = reinterpret_cast<NativeNaturalType>(dram)*3;
     auto eth0 = new(reinterpret_cast<Natural8*>(dramEnd)-sizeof(AllwinnerEMACDriver))AllwinnerEMACDriver;
     eth0->initialize();
     eth0->setMACAddress({{ 0x36, 0xC9, 0xE3, 0xF1, 0xB8, 0x05 }}); // 36:C9:E3:F1:B8:05
@@ -72,9 +65,8 @@ void main() {
     auto bootFileHeader = reinterpret_cast<BootFileHeader*>(Tcp::connection->receiveBuffer);
     if(bootFileHeader->validate()) {
         puts("[ OK ] Payload validation");
-        // TODO: Branch to bootFileHeader->jumpInstruction
-    } else {
+        reinterpret_cast<void(*)()>(bootFileHeader)();
+        puts("[ OK ] Payload execution");
+    } else
         puts("[FAIL] Payload validation");
-        asm("wfi");
-    }
 }

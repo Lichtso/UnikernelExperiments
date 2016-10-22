@@ -186,3 +186,10 @@ struct AllwinnerUART {
             putc(*str++);
     }
 };
+
+void puts(const char* str) {
+    auto uart = AllwinnerUART::instances[0].address;
+    uart->puts(str);
+    uart->putc('\r');
+    uart->putc('\n');
+}
