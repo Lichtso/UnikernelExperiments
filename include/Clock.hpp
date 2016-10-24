@@ -1,4 +1,4 @@
-#include "Hardware/AllwinnerA64.hpp"
+#include "Hardware/AArch64Cache.hpp"
 
 struct Clock {
     static Natural64 uptimeCycles, uptimeTicks;

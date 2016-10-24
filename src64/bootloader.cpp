@@ -27,6 +27,9 @@ void main() {
     ccu->configureHSTimer();
     Clock::initialize();
 
+    AArch64::invalidateCache(AArch64::L1InstructionCache);
+    AArch64::activateInstructionCache();
+
     auto uart = AllwinnerUART::instances[0].address;
     ccu->configureUART0();
     uart->initialize();
@@ -48,7 +51,7 @@ void main() {
 
     auto eth0 = new(reinterpret_cast<Natural8*>(dramEnd)-sizeof(AllwinnerEMACDriver))AllwinnerEMACDriver;
     eth0->initialize();
-    eth0->setMACAddress({{ 0x36, 0xC9, 0xE3, 0xF1, 0xB8, 0x05 }}); // 36:C9:E3:F1:B8:05
+    eth0->setMACAddress({{ 0x36, 0xC9, 0xE3, 0xF1, 0xB8, 0x05 }});
 
     Tcp::connection = new(reinterpret_cast<Natural8*>(eth0)-sizeof(Tcp::Connection))Tcp::Connection;
     Tcp::connection->receiveBuffer = reinterpret_cast<Natural8*>(dram);
