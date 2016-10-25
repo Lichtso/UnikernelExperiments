@@ -18,24 +18,24 @@ build/%.o : src64/%.s
 build/%.o : src64/%.cpp $(HPP_SRC)
 	$(COMPILE) $(TARGET_64) $(COMPILE_CPP) -o $@ $<
 
-build/bootloader.bin: tools/ImageBuilder build/bootloader32.elf build/bootloader64.elf
-	$< $@ 0x10000 0x2000 build/bootloader32.elf build/bootloader64.elf
+build/Bootloader.bin: tools/ImageBuilder build/Bootloader32.elf build/Bootloader64.elf
+	$< $@ 0x10000 0x2000 build/Bootloader32.elf build/Bootloader64.elf
 
-build/kernel.bin: tools/ImageBuilder build/kernel.elf
-	$< $@ 0x40000000 0x0 build/kernel.elf
+build/Kernel.bin: tools/ImageBuilder build/Kernel.elf
+	$< $@ 0x40000000 0x0 build/Kernel.elf
 
-build/bootloader32.elf : src32/bootloader.lds build/entry32.o
-	$(LINK) $< -o $@ build/entry32.o
+build/Bootloader32.elf : src32/Bootloader.lds build/Entry32.o
+	$(LINK) $< -o $@ build/Entry32.o
 
-build/bootloader64.elf : src64/bootloader.lds build/bootloader.o build/entry64.o
-	$(LINK) $< -o $@ build/bootloader.o build/entry64.o
+build/Bootloader64.elf : src64/Bootloader.lds build/Bootloader.o build/Entry64.o
+	$(LINK) $< -o $@ build/Bootloader.o build/Entry64.o
 
-build/kernel.elf : src64/kernel.lds build/kernel.o
-	$(LINK) $< -o $@ build/kernel.o
+build/Kernel.elf : src64/Kernel.lds build/Kernel.o build/ExceptionTable.o
+	$(LINK) $< -o $@ build/Kernel.o
 
-analyze: build/entry32.o build/entry64.o build/bootloader.o build/kernel.o
-	$(ANALYZE) $(TARGET_32) build/entry32.o
-	$(ANALYZE) $(TARGET_64) build/entry64.o build/bootloader.o build/kernel.elf
+analyze: build/Entry32.o build/Entry64.o build/Bootloader.o build/Kernel.elf
+	$(ANALYZE) $(TARGET_32) build/Entry32.o
+	$(ANALYZE) $(TARGET_64) build/Entry64.o build/Bootloader.o build/Kernel.elf
 
 tools/ImageBuilder: tools/ImageBuilder.cpp
 	clang++ -Itools -o $@ $<

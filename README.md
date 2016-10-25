@@ -18,11 +18,12 @@ You will need:
 - UART for debugging (optional)
 
 ```bash
-make
-dd if=build/bootloader.bin of=/dev/[Mirco-SD-Card]
+make build/Bootloader.bin
+dd if=build/Bootloader.bin of=/dev/[Mirco-SD-Card]
 tools/screen /dev/[UART-USB]
 ping6 FE80::34C9:E3FF:FEF1:B805%[Interface]
-nc FE80::34C9:E3FF:FEF1:B805%[Interface] 1337 < [Your-Binary].bin
+make build/Kernel.bin
+nc FE80::34C9:E3FF:FEF1:B805%[Interface] 1337 < build/Kernel.bin
 ```
 
 
@@ -94,7 +95,7 @@ The firmware comes with a USB-OTG boot option but:
 - https://github.com/longsleep/linux-pine64/blob/pine64-hacks-1.2/drivers/net/ethernet/allwinner/sunxi-gmac.c
 - https://github.com/apritzel/linux/blob/a64-v5/drivers/net/ethernet/allwinner/sun8i-emac.c
 - https://github.com/torvalds/linux/blob/master/arch/arm64/kernel/setup.c
-- https://github.com/torvalds/linux/blob/master/arch/arm64/include/asm/boot.h
+- https://github.com/torvalds/linux/blob/master/arch/arm64/mm/cache.S
 
 ### Docs
 - http://infocenter.arm.com/help/topic/com.arm.doc.den0024a/index.html

@@ -153,9 +153,12 @@ struct AllwinnerEMAC {
         struct {
             Natural32 flushFIFODisable : 1,
                       DMAFIFOThresholdDisable : 1,
-                      pad0 : 6,
+                      undocumented0 : 1,
+                      pad0 : 5,
                       DMAFIFOThresholdValue : 3,
-                      pad1 : 19,
+                      pad1 : 16,
+                      undocumented1 : 1,
+                      pad2 : 2,
                       DMAEnable : 1,
                       DMAStart : 1;
         };

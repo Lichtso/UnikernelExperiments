@@ -213,7 +213,6 @@ struct AllwinnerCCU {
         // PLLDDR0Control = (1<<31)|(27<<8); // 0x01C20020 : PLL_ENABLE, PLL_FACTOR_N: 28 (672 MHz)
         // PLLDDR0Control |= (1<<20); // 0x01C20020 : PLL_DDR0_CFG_UPDATE
         // PLLLockControl |= (1<<4); // 0x01C20320 : Lock Enable PLL_DDR0
-        // puts("Wait for PLL0");
         // while(((PLLDDR0Control>>20)&0x11) != 0x10); // 0x01C20020 : LOCK, PLL_DDR0_CFG_UPDATE
         // PLLLockControl &= ~(1<<4); // 0x01C20320
 
