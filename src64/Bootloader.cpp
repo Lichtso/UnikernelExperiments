@@ -27,8 +27,8 @@ void main() {
     ccu->configureHSTimer();
     Clock::initialize();
 
-    AArch64::invalidateCache(AArch64::L1InstructionCache);
-    AArch64::activateInstructionCache();
+    Cache::invalidateAll();
+    Cache::setInstructionCacheActive(true);
 
     auto uart = AllwinnerUART::instances[0].address;
     ccu->configureUART0();
