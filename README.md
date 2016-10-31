@@ -35,29 +35,49 @@ nc FE80::34C9:E3FF:FEF1:B805%[Interface] 1337 < build/Kernel.bin
 - Security: Less code -> less breaches
 
 
-## Status and Features
+## State of Affairs / Features
 
 - Hardware Driver
     - UART ✓
     - RSB ✓
     - AXP803 ✓
-    - DRAM ✓
+    - DRAM
+        - 2GB ✓
+        - Auto size detection
     - Ethernet ✓
-    - Interrupt Controller (Skeleton only)
-    - SD-Card (Skeleton only)
+    - Interrupt Controller
+    - SD-Card
+    - DVFS
 
 - Software Driver
     - 64 Bit: ARMv8 / ARM64 / AArch64 ✓
+    - Floating point unit ✓
+    - Caches
+        - L1 Instruction ✓
+        - L1 Data
+        - L2 Unified
+        - TLB
+    - MMU
     - Interrupt Handling
-    - IPv4 / ICMPv4 (Skeleton only)
+    - Multi threading
+    - IPv4 / ICMPv4
     - IPv6 / ICMPv6, implemented features:
         - Echo ✓
         - Neighbor solicitation and advertisement ✓
     - UDP ✓
-    - TCP, implemented features:
+    - TCP
+        - IPv4
         - IPv6 ✓
-        - Receiving ✓
+        - Receiving payload ✓
+        - Sending payload
         - Connect / Listen / Close ✓
+        - Sequence number overflow
+        - Receive and transmit ring buffer
+        - Timestamps
+        - Selective acknowledgment
+        - Initial sequence numbers
+        - Correct timings
+        - Multiple connections
 
 
 ## Communication Interfaces
@@ -83,6 +103,8 @@ The firmware comes with a USB-OTG boot option but:
 - https://sourceware.org/binutils/docs/as/ARM-Directives.html
 - http://www.heyrick.co.uk/armwiki/The_Status_register
 - http://downloads.ti.com/docs/esd/SPNU118N/Content/SPNU118N_HTML/assembler_directives.html
+- https://developer.arm.com/docs/den0024/latest/12-the-memory-management-unit/124-translation-tables-in-armv8-a/1243-cache-configuration
+- https://en.wikipedia.org/wiki/Cache
 
 ### Tutorials
 - https://balau82.wordpress.com/2010/04/12/booting-linux-with-u-boot-on-qemu-arm/
@@ -96,6 +118,7 @@ The firmware comes with a USB-OTG boot option but:
 - https://github.com/apritzel/linux/blob/a64-v5/drivers/net/ethernet/allwinner/sun8i-emac.c
 - https://github.com/torvalds/linux/blob/master/arch/arm64/kernel/setup.c
 - https://github.com/torvalds/linux/blob/master/arch/arm64/mm/cache.S
+- https://github.com/torvalds/linux/blob/master/arch/arm64/mm/proc.S
 
 ### Docs
 - http://infocenter.arm.com/help/topic/com.arm.doc.den0024a/index.html
