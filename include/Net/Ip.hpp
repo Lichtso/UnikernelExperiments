@@ -1,4 +1,4 @@
-#include "Mac.hpp"
+#include <Net/Mac.hpp>
 
 struct IpChecksumGenerator {
     Natural32 accumulator = 0;

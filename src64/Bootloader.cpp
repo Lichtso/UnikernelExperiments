@@ -28,7 +28,7 @@ void main() {
     Clock::initialize();
 
     Cache::invalidateAll();
-    Cache::setInstructionCacheActive(true);
+    Cache::setAllActive(true);
 
     auto uart = AllwinnerUART::instances[0].address;
     ccu->configureUART0();

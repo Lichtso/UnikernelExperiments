@@ -1,4 +1,4 @@
-#include "AllwinnerSMHC.hpp"
+#include <Hardware/AllwinnerSMHC.hpp>
 
 const struct AllwinnerCPUCFG::Instance AllwinnerCPUCFG::instances[] = {
     { reinterpret_cast<AllwinnerCPUCFG*>(0x01700000) }

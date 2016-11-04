@@ -1,4 +1,4 @@
-#include "../Clock.hpp"
+#include <Clock.hpp>
 
 struct Mac {
     struct Address {

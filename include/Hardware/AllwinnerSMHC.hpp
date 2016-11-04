@@ -1,4 +1,4 @@
-#include "AllwinnerEMAC.hpp"
+#include <Hardware/AllwinnerEMAC.hpp>
 
 struct AllwinnerSMHC {
     static const struct Instance {

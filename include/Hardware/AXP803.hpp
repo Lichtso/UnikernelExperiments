@@ -1,4 +1,4 @@
-#include "AllwinnerRSB.hpp"
+#include <Hardware/AllwinnerRSB.hpp>
 
 struct AXP803 {
     static const struct Instance {

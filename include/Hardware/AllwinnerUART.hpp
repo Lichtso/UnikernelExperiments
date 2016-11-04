@@ -1,4 +1,4 @@
-#include "GICPL400.hpp"
+#include <Hardware/GICPL400.hpp>
 
 struct AllwinnerUART {
     static const struct Instance {

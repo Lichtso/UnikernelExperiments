@@ -1,4 +1,4 @@
-#include "AllwinnerDRAMCTL.hpp"
+#include <Hardware/AllwinnerDRAMCTL.hpp>
 
 struct AllwinnerDRAM {
     static const struct Instance {

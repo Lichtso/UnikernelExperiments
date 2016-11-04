@@ -1,4 +1,4 @@
-#include "AllwinnerA64.hpp"
+#include <Hardware/AllwinnerA64.hpp>
 
 namespace Cache {
 
@@ -50,6 +50,10 @@ void invalidateLevel(Level level) {
     }
 }
 
+void invalidateTLB() {
+    asm volatile("tlbi alle3\n");
+}
+
 void invalidateAll() {
     Natural32 cacheLevelIDRegister, level, levelEnd, cacheType;
     asm volatile("mrs %x0, CLIDR_EL1\n" : "=r"(cacheLevelIDRegister));
@@ -59,10 +63,11 @@ void invalidateAll() {
         if(cacheType >= 2)
             invalidateLevel(static_cast<Level>(level));
     }
+    invalidateTLB();
 }
 
-void setInstructionCacheActive(bool active) {
-    Natural32 systemControlRegisterEL3, bitMask = (1<<12);
+void setAllActive(bool active) {
+    Natural32 systemControlRegisterEL3, bitMask = (1<<12); // TODO: |(1<<2)|(1<<0);
     asm volatile("mrs %x0, SCTLR_EL3\n" : "=r"(systemControlRegisterEL3));
     if(active)
         systemControlRegisterEL3 |= bitMask;

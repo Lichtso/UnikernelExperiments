@@ -1,4 +1,4 @@
-#include "AllwinnerUART.hpp"
+#include <Hardware/AllwinnerUART.hpp>
 
 struct AllwinnerTimer {
     static const struct Instance {

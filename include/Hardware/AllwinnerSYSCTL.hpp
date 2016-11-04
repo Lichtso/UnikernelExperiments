@@ -1,4 +1,4 @@
-#include "AllwinnerCPUCFG.hpp"
+#include <Hardware/AllwinnerCPUCFG.hpp>
 
 struct AllwinnerSYSCTL {
     static const struct Instance {

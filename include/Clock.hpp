@@ -1,4 +1,4 @@
-#include "Hardware/AArch64Cache.hpp"
+#include <Memory/AArch64MMU.hpp>
 
 struct Clock {
     static Natural64 uptimeClockMetaTicks, uptimeClockTicks;
