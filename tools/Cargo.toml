@@ -1,0 +1,9 @@
+[package]
+name = "image_builder"
+
+version = "0.0.0"
+authors = ["Alexander Meißner <AlexanderMeissner@gmx.net>"]
+
+[dependencies]
+byteorder = "1.0.0"
+elf = "0.0.10"

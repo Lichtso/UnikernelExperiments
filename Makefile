@@ -1,4 +1,4 @@
-HPP_SRC := $(wildcard include/*.hpp) $(wildcard include/Hardware/*.hpp) $(wildcard include/Net/*.hpp)
+HPP_SRC := $(wildcard include/*.hpp) $(wildcard include/Hardware/*.hpp) $(wildcard include/Memory/*.hpp) $(wildcard include/Net/*.hpp)
 LINK = $(LLVM_BIN)lld -flavor gnu -s -Linclude --script
 ANALYZE = $(LLVM_BIN)llvm-objdump -print-imm-hex -d -s -t -triple
 COMPILE = $(LLVM_BIN)clang -O1 -Iinclude -c -mlittle-endian -Wall -Wsign-compare -target
@@ -18,11 +18,11 @@ build/%.o : src64/%.s
 build/%.o : src64/%.cpp $(HPP_SRC)
 	$(COMPILE) $(TARGET_64) $(COMPILE_CPP) -o $@ $<
 
-build/Bootloader.bin: tools/ImageBuilder build/Bootloader32.elf build/Bootloader64.elf
-	$< $@ 0x10000 0x2000 build/Bootloader32.elf build/Bootloader64.elf
+build/Bootloader.bin: build/Bootloader32.elf build/Bootloader64.elf
+	tools/target/debug/image_builder 0x10000 0x2000 $@ $?
 
-build/Kernel.bin: tools/ImageBuilder build/Kernel.elf
-	$< $@ 0x40000000 0x0 build/Kernel.elf
+build/Kernel.bin: build/Kernel.elf
+	tools/target/debug/image_builder 0x40000000 0x0 $@ $?
 
 build/Bootloader32.elf : src32/Bootloader.lds build/Entry32.o
 	$(LINK) $< -o $@ build/Entry32.o
@@ -37,8 +37,5 @@ analyze: build/Entry32.o build/Entry64.o build/Bootloader.o build/Kernel.elf
 	$(ANALYZE) $(TARGET_32) build/Entry32.o
 	$(ANALYZE) $(TARGET_64) build/Entry64.o build/Bootloader.o build/Kernel.elf
 
-tools/ImageBuilder: tools/ImageBuilder.cpp
-	clang++ -Itools -o $@ $<
-
-tools/screen: tools/screen.cpp
+tools/screen: tools/screen.c
 	clang++ -o $@ $<
