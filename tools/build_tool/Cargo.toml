@@ -1,5 +1,5 @@
 [package]
-name = "image_builder"
+name = "build_tool"
 
 version = "0.0.0"
 authors = ["Alexander Meißner <AlexanderMeissner@gmx.net>"]
