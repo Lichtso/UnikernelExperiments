@@ -5,7 +5,7 @@ struct AllwinnerHSTimer {
         volatile AllwinnerHSTimer* address;
         Natural8 interruptPort;
     } instances[];
-    static const Natural32 baseFrequency = 24000000; // AHB1 CLK
+    static const Natural32 baseFrequency = 200000000; // AHB1 CLK
 
     union {
         struct {

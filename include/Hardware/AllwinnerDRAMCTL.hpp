@@ -24,7 +24,8 @@ struct AllwinnerDRAMCTL {
         refreshTiming,
         refreshControl1,
         powerTiming,
-        pad2[8],
+        pad2[7],
+        unknown0,
         DQSGM,
         DTC,
         DTA[4],
@@ -52,7 +53,8 @@ struct AllwinnerDRAMCTL {
         pad5[9],
         ACMDL,
         ACLCDL,
-        pad6[2],
+        ACIOC,
+        pad6,
         CAIOC[60];
     struct {
         Natural32

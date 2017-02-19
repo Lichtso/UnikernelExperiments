@@ -19,10 +19,18 @@ struct AllwinnerDRAMCOM {
         };
         Natural32 raw;
     } control;
-    Natural32 unknown0[3];
+    Natural32 pad0,
+              debugControl[2];
     struct {
         Natural32 bandwidthLimit,
                   port;
     } masterConfig[12];
-    Natural32 unknown1[485];
+    Natural32 pad1[8],
+              bandwidthControl,
+              unknown0[475],
+              MCProtect;
+
+    Natural8 getDRAMSize() volatile {
+        return control.rank+control.bank+control.rowWidth+control.pageSize+6;
+    }
 };

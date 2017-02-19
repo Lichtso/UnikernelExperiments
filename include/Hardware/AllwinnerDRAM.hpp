@@ -9,13 +9,12 @@ struct AllwinnerDRAM {
         auto dramCom = AllwinnerDRAMCOM::instances[0].address; // 0x01C62000
         auto dramCtl = AllwinnerDRAMCTL::instances[0].address; // 0x01C63000
 
+        // auto_set_timing_para
         dramCtl->clockEnable = 0xC00E; // 0x01C6300C
-
         dramCtl->mode[0] = 0x00001C70; // 0x01C63030
         dramCtl->mode[1] = 0x00000040; // 0x01C63034
         dramCtl->mode[2] = 0x00000018; // 0x01C63038
         dramCtl->mode[3] = 0x00000000; // 0x01C6303C
-
         dramCtl->timing[0] = 0x0C11180D; // 0x01C63058
         dramCtl->timing[1] = 0x00030412; // 0x01C6305C
         dramCtl->timing[2] = 0x0406050A; // 0x01C63060
@@ -24,14 +23,14 @@ struct AllwinnerDRAM {
         dramCtl->timing[5] = 0x05050403; // 0x01C6306C
         dramCtl->timing[8] &= ~0xFFFF; // 0x01C63078
         dramCtl->timing[8] |= 0x6610; // 0x01C63078
-
         dramCtl->piTiming[0] = 0x02040102; // 0x01C63080
         dramCtl->PT[3] = 0x10D52081; // 0x01C63050
         dramCtl->PT[4] = 0x2A120D01; // 0x01C63054
         dramCtl->refreshTiming = 0x00510076; // 0x01C63090
 
-        dramCom->unknown0[2] = 0x0000018F; // 0x01C6200C
-        dramCom->unknown1[8] = 0x00010000; // 0x01C62090
+        // set_master_priority
+        dramCom->debugControl[1] = 0x0000018F; // 0x01C6200C
+        dramCom->bandwidthControl = 0x00010000; // 0x01C62090
         const Natural32 bandwidthLimit[] = {
             0x00A0000D, 0x06000009, 0x0200000D, 0x01000009, 0x07000009, 0x01000009,
             0x01000009, 0x0100000D, 0x0100000D, 0x04000009, 0x20000209, 0x05000009
@@ -44,23 +43,24 @@ struct AllwinnerDRAM {
             dramCom->masterConfig[i].bandwidthLimit = bandwidthLimit[i]; // 0x01C62010 - 0x01C62068
             dramCom->masterConfig[i].port = port[i]; // 0x01C62014 - 0x01C6206C
         }
-        dramCom->unknown1[48] = 0x81000004; // 0x01C62130
+        dramCom->unknown0[39] = 0x81000004; // 0x01C62130
 
+        // mctl_channel_init
         dramCtl->PGC[0] &= ~((1<<30)|0x3F); // 0x01C63100
         dramCtl->PGC[1] |= (1<<26); // 0x01C63104
         dramCtl->PGC[1] &= ~(1<<24); // 0x01C63104
 
-        dramCom->unknown0[2] |= 0x18F; // 0x01C6200C
-        dramCom->unknown1[484] = 0x94BE6FA3; // 0x01C62800
+        dramCom->debugControl[1] |= 0x0000018F; // 0x01C6200C
+        dramCom->MCProtect = 0x94BE6FA3; // 0x01C62800
         dramCtl->MXUpdate[2] |= (0x50<<16); // 0x01C63888
-        dramCom->unknown1[484] = 0; // 0x01C62800
+        dramCom->MCProtect = 0; // 0x01C62800
 
-        dramCtl->pad2[7] |= (1<<9); // 0x01C630B8
+        dramCtl->unknown0 |= (1<<9); // 0x01C630B8
         dramCtl->PGC[2] &= ~(0xF<<8); // 0x01C63108
         dramCtl->PGC[2] |= (0x3<<8); // 0x01C63108
         for(Natural8 i = 0; i < 4; ++i)
             dramCtl->DX[i].GC &= ~0xF03E; // 0x01C63344 + i*0x80
-        dramCtl->pad6[0] |= 2; // 0x01C63208
+        dramCtl->ACIOC |= 2; // 0x01C63208
         dramCtl->PGC[2] &= ~0x2000; // 0x01C63108
         dramCtl->PGC[0] &= ~(1<<28); // 0x01C63100
 
@@ -122,7 +122,7 @@ struct AllwinnerDRAM {
         dramCtl->PI = 0x5F2; // 0x01C63000
         dramCtl->PI |= 1; // 0x01C63000
         while((dramCtl->PGS[0]&1) == 0); // 0x01C63010
-        dramCom->unknown1[24] |= (1<<31); // 0x01C620D0
+        dramCom->unknown0[15] |= (1<<31); // 0x01C620D0
         while((dramCtl->status&1) == 0); // 0x01C63018
         dramCtl->PGC[3] &= ~(0x6<<24); // 0x01C6310C
         dramCtl->DTC &= ~(3<<24); // 0x01C630C0
@@ -133,7 +133,11 @@ struct AllwinnerDRAM {
 
         if(dramCtl->PGS[0]&0xFF0000) // 0x01C63010
             puts("[FAIL] DRAM");
-        else
-            puts("[ OK ] DRAM");
+        else {
+            auto uart = AllwinnerUART::instances[0].address;
+            uart->puts("[ OK ] DRAM: 2^");
+            uart->putDec(dramCom->getDRAMSize());
+            puts(" bytes");
+        }
     }
 };

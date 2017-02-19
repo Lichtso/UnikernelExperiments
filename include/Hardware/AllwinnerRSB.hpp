@@ -107,10 +107,8 @@ struct AllwinnerRSB {
         if(status.transferError || !status.transferComplete) {
             puts("[FAIL] RSB transfer");
             return false;
-        } else {
-            puts("[ OK ] RSB transfer");
+        } else
             return true;
-        }
     }
     bool setRunTimeAddress() volatile {
         return transfer(0xE8);
