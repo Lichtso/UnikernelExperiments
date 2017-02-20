@@ -46,14 +46,31 @@ fn main() {
         let in_file_path = PathBuf::from(in_file_path_str);
         let in_file = try_IO!(in_file_path, elf::File::open_path(&in_file_path));
 
-        if in_file.ehdr.data != elf::types::Data(1) {
-            println!("{:?} is not little endian", in_file_path);
+        if in_file.ehdr.osabi != elf::types::ELFOSABI_NONE {
+            println!("{:?} is of wrong ABI", in_file_path);
+            return;
+        }
+
+        if in_file.ehdr.data != elf::types::ELFDATA2LSB {
+            println!("{:?} is of wrong endianess", in_file_path);
             return;
         }
 
         match in_file.ehdr.class {
-            elf::types::Class(1) => object_files[0].push(in_file_path),
-            elf::types::Class(2) => object_files[1].push(in_file_path),
+            elf::types::ELFCLASS32 => {
+                if in_file.ehdr.machine != elf::types::EM_ARM {
+                    println!("{:?} is of wrong machine architecture", in_file_path);
+                    return;
+                }
+                object_files[0].push(in_file_path);
+            },
+            elf::types::ELFCLASS64 => {
+                if in_file.ehdr.machine != elf::types::EM_AARCH64 {
+                    println!("{:?} is of wrong machine architecture", in_file_path);
+                    return;
+                }
+                object_files[1].push(in_file_path);
+            },
             elf::types::Class(_) => {
                 println!("{:?} is of unknown architecture size", in_file_path);
                 return;
@@ -66,6 +83,7 @@ fn main() {
     let mut payload_length :u32 = BOOT_FILE_HEADER_LENGTH;
     let mut check_sum :u32 = 0;
 
+    let mut entry_point :u64 = 0;
     let mut virtual_address = virtual_offset+BOOT_FILE_HEADER_LENGTH as u64;
     for architecture in 0..2 {
         if object_files[architecture].len() == 0 {
@@ -81,7 +99,6 @@ fn main() {
         try_IO!(linker_script_file_path, linker_script.write(b"SECTIONS {\n"));
         try_IO!(linker_script_file_path, linker_script.write(format!("    . = 0x{:08X};", virtual_address).as_bytes()));
         try_IO!(linker_script_file_path, linker_script.write(b"
-    .entry : { *(.entry) }
     .text : { *(.text) }
     .rodata : { *(.rodata) }
     .data : { *(.data) }
@@ -100,12 +117,15 @@ fn main() {
             .status());
 
         let in_file = try_IO!(elf_file_path, elf::File::open_path(&elf_file_path));
+        if entry_point == 0 {
+            entry_point = in_file.ehdr.entry;
+        }
         for section in &in_file.sections {
-            if section.shdr.size == 0 || section.shdr.addr < virtual_offset || section.shdr.shtype != elf::types::SectionType(1) {
+            if section.shdr.size == 0 || section.shdr.shtype != elf::types::SHT_PROGBITS {
                 continue;
             }
             if section.shdr.addr < virtual_address {
-                println!("{:?} contains a section virtual address which is getting smaller again", elf_file_path);
+                println!("{:?} section virtual addresses are in wrong order", elf_file_path);
                 return;
             }
 
@@ -126,11 +146,17 @@ fn main() {
     payload_length = (payload_length+BOOT_FILE_BLOCK_SIZE-1)/BOOT_FILE_BLOCK_SIZE;
     println!("  {} blocks of {} bytes", payload_length, BOOT_FILE_BLOCK_SIZE);
     payload_length *= BOOT_FILE_BLOCK_SIZE;
+    println!("  {:08X} entry point", entry_point);
+    entry_point = (entry_point-virtual_offset)/4;
+    if entry_point > 0xEFFFFF {
+        println!("Entry point is out of reach");
+        return;
+    }
 
     let mut boot_file_header = [0u8; 20];
     let jump_instruction :u32 = if object_files[0].len() > 0
-        { 0xEA000000|((BOOT_FILE_HEADER_LENGTH-8)/4) } else
-        { 0x14000000|(BOOT_FILE_HEADER_LENGTH/4) };
+        { 0xEA000000|(entry_point as u32-2) } else
+        { 0x14000000|(entry_point as u32) };
     (&mut boot_file_header[0..4]).write_u32::<LittleEndian>(jump_instruction).unwrap();
     (&mut boot_file_header[4..12]).clone_from_slice(b"eGON.BT0");
     (&mut boot_file_header[12..16]).write_u32::<LittleEndian>(0x5F0A6C39).unwrap();

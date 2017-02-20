@@ -3,7 +3,6 @@
 void main();
 
 extern "C" {
-    __attribute__((section(".entry")))
     void _start() {
         main();
     }

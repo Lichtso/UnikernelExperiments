@@ -1,4 +1,3 @@
-    .section .entry,"ax"
 _start:
     .global _start
 

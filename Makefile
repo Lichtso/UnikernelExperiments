@@ -18,14 +18,11 @@ build/%.o : src64/%.cpp $(HPP_SRC)
 	$(COMPILE) $(TARGET_64) $(COMPILE_CPP) -o $@ $<
 
 build/Bootloader.bin: build/Entry32.o build/Entry64.o build/Bootloader.o
-	LD=$(LLVM_BIN)lld tools/build_tool/target/release/build_tool 0x10000 0x2000 $@ $?
+	LD=$(LLVM_BIN)lld tools/build_tool/target/release/build_tool 0x10000 0x2000 $@ $^
 
 build/Kernel.bin: build/Kernel.o
-	LD=$(LLVM_BIN)lld tools/build_tool/target/release/build_tool 0x40000000 0x0 $@ $?
+	LD=$(LLVM_BIN)lld tools/build_tool/target/release/build_tool 0x40000000 0x0 $@ $^
 
-analyze: build/Entry32.o build/Entry64.o build/Bootloader.o build/Kernel.elf
-	$(ANALYZE) $(TARGET_32) build/Entry32.o
-	$(ANALYZE) $(TARGET_64) build/Entry64.o build/Bootloader.o build/Kernel.elf
-
-tools/screen: tools/screen.c
-	clang++ -o $@ $<
+analyze: build/Bootloader.bin
+	$(ANALYZE) $(TARGET_32) build/Bootloader32.elf
+	$(ANALYZE) $(TARGET_64) build/Bootloader64.elf
