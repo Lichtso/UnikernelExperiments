@@ -28,7 +28,7 @@ void main() {
     Clock::initialize();
 
     Cache::invalidateAll();
-    Cache::setAllActive(true);
+    Cache::setActive(false, false, true);
 
     auto uart = AllwinnerUART::instances[0].address;
     ccu->configureUART0();
@@ -43,13 +43,12 @@ void main() {
     ccu->configurePLL();
     ccu->configureDRAM();
     auto dram = AllwinnerDRAM::instances[0].address;
-    auto dramEnd = reinterpret_cast<NativeNaturalType>(dram)*3;
     dram->initialize();
+    auto pageTable = MMU::initialize();
 
     AXP803::configureDC1SW();
     ccu->configureEMAC();
-
-    auto eth0 = new(reinterpret_cast<Natural8*>(dramEnd)-sizeof(AllwinnerEMACDriver))AllwinnerEMACDriver;
+    auto eth0 = new(pageTable-sizeof(AllwinnerEMACDriver))AllwinnerEMACDriver;
     eth0->initialize();
     eth0->setMACAddress({{ 0x36, 0xC9, 0xE3, 0xF1, 0xB8, 0x05 }});
 

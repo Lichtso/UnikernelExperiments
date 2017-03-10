@@ -10,7 +10,7 @@ It is completely written from scratch and is thus still well structured without 
 You will need:
 - Make
 - LLVM 3.9 or higher: [Clang](http://clang.llvm.org/get_started.html), [LLD](http://lld.llvm.org), llvm-objdump (optional)
-- [Elfio](http://elfio.sourceforge.net)
+- [Rust](https://www.rust-lang.org/en-US/)
 - Pine64+ with 2GB (other versions are untested)
 - Mirco-SD-card to store the bootloader
 - Micro-USB-cable for power supply
@@ -45,18 +45,18 @@ nc FE80::34C9:E3FF:FEF1:B805%[Interface] 1337 < build/Kernel.bin
         - 2GB ✓
         - Auto size detection
     - Ethernet ✓
+    - High Speed Timer ✓
+    - Timer
+    - Real Time Clock
     - Interrupt Controller
     - SD-Card
+    - Thermal Sensors
     - DVFS
 
 - Software Driver
     - 64 Bit: ARMv8 / ARM64 / AArch64 ✓
     - Floating point unit ✓
-    - Caches
-        - L1 Instruction ✓
-        - L1 Data
-        - L2 Unified
-        - TLB
+    - Caches ✓
     - MMU
     - Interrupt Handling
     - Multi threading
@@ -114,8 +114,8 @@ The firmware comes with a USB-OTG boot option but:
 ### Code
 - https://github.com/allwinner-zh/bootloader
 - https://github.com/linux-sunxi/sunxi-tools/blob/master/uart0-helloworld-sdboot.c
-- https://github.com/longsleep/linux-pine64/blob/pine64-hacks-1.2/drivers/net/ethernet/allwinner/sunxi-gmac.c
-- https://github.com/apritzel/linux/blob/a64-v5/drivers/net/ethernet/allwinner/sun8i-emac.c
+- https://github.com/apritzel/linux/commits/a64-wip
+- https://github.com/longsleep/linux-pine64/tree/pine64-hacks-2.0-experimental
 - https://github.com/torvalds/linux/blob/master/arch/arm64/kernel/setup.c
 - https://github.com/torvalds/linux/blob/master/arch/arm64/mm/cache.S
 - https://github.com/torvalds/linux/blob/master/arch/arm64/mm/proc.S

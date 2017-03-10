@@ -66,14 +66,28 @@ void invalidateAll() {
     invalidateTLB();
 }
 
-void setAllActive(bool active) {
-    Natural32 systemControlRegisterEL3, bitMask = (1<<12); // TODO: |(1<<2)|(1<<0);
-    asm volatile("mrs %x0, SCTLR_EL3\n" : "=r"(systemControlRegisterEL3));
-    if(active)
-        systemControlRegisterEL3 |= bitMask;
-    else
-        systemControlRegisterEL3 &= ~bitMask;
-    asm volatile("msr SCTLR_EL3, %x0\n" : : "r"(systemControlRegisterEL3));
+void setActive(bool mmu, bool data, bool instruction) {
+    asm volatile(
+        "msr SCTLR_EL3, %x0\n"
+        "isb\n" : : "r"(
+        (mmu<<0)|
+        (1<<1)| // Enable alignment fault check
+        (data<<2)|
+        (1<<3)| // Enable stack alignment check
+        (instruction<<12)
+    ));
+}
+
+void preFetch(void* address) {
+    asm volatile("prfm pldl1keep, [%x0]\n" : : "r"(address));
+}
+
+void ensureRead(void* address) {
+    asm volatile("dc ivac, %x0\n" : : "r"(address));
+}
+
+void ensureWrite(void* address) {
+    asm volatile("dmb st\ndc cvac, %x0\n" : : "r"(address));
 }
 
 };

@@ -26,7 +26,7 @@ namespace MMU {
                       lastLevelNonSecure : 1,
                       lastLevelAccessPermissions : 2,
                       lastLevelShareability : 2,
-                      lastLevelAccessFlag, : 1,
+                      lastLevelAccessFlag : 1,
                       lastLevelNotGlobal : 1,
                       address : 36,
                       pad0 : 4,
@@ -50,16 +50,16 @@ namespace MMU {
 
     template<Natural16 addressBits>
     struct PageTable {
-        PageTableEntry entries[2<<addressBits];
+        PageTableEntry entries[1<<addressBits];
     };
 
-    volatile Natural8* initialize() {
+    Natural8* initialize() {
         auto dram = AllwinnerDRAM::instances[0].address;
         auto dramCom = AllwinnerDRAMCOM::instances[0].address;
         auto dramEnd = reinterpret_cast<NativeNaturalType>(dram)+(1ULL<<dramCom->getDRAMSize());
-        auto level2Table = reinterpret_cast<volatile PageTable<Granule64KiB>*>(dramEnd-sizeof(PageTable<Granule64KiB>));
+        auto level2Table = reinterpret_cast<PageTable<Granule64KiB>*>(dramEnd-sizeof(PageTable<Granule64KiB>));
 
-        for(Natural32 index = 0; index < 8192; ++index) {
+        for(Natural16 index = 0; index < 8192; ++index) {
             auto entry = &level2Table->entries[index];
             entry->raw = 0x20000000*index;
             entry->lastLevelAccessFlag = 1;
@@ -70,12 +70,15 @@ namespace MMU {
         entry->lastLevelAttributeIndex = DeviceNGNRE;
         entry->lastLevelShareability = OuterShareable;
 
-        for(Natural32 index = 2; index < 6; ++index) {
+        for(Natural16 index = 2; index < 6; ++index) {
             entry = &level2Table->entries[index];
             entry->valid = 1;
             entry->lastLevelAttributeIndex = WriteBack;
             entry->lastLevelShareability = InnerShareable;
         }
+
+        entry = &level2Table->entries[5];
+        entry->lastLevelAttributeIndex = WriteThrough; // For DMA area
 
         asm volatile(
             "dmb st\n"
@@ -92,6 +95,9 @@ namespace MMU {
             (0<<20)  // Top byte used in the address calculation
         ));
 
-        return reinterpret_cast<volatile Natural8*>(level2Table);
+        Cache::setActive(true, true, true);
+        puts("[ OK ] MMU, TLB and caches");
+
+        return reinterpret_cast<Natural8*>(level2Table);
     }
 };

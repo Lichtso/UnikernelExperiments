@@ -61,7 +61,6 @@ struct AllwinnerEMACDriver : public Mac::Interface {
         bool nextLinkStatus = EMAC->link();
         if(linkStatus != nextLinkStatus) {
             linkStatus = nextLinkStatus;
-            Clock::printUptime();
             if(linkStatus) {
                 uart->puts("[ OK ] ");
                 uart->putDec(EMAC->linkSpeed());
@@ -69,6 +68,7 @@ struct AllwinnerEMACDriver : public Mac::Interface {
             } else
                 puts("[FAIL] Lost ethernet link");
             linkStatusChanged();
+            Clock::printUptime();
         }
         Natural32 length = 0, left = transmitBufferCount;
         AllwinnerEMAC::TransmitDescriptor* transmitPeekDescriptor = transmitedDescriptor;
